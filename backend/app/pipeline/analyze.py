@@ -173,9 +173,6 @@ def detect_reportable_shift(points, turns, stored):
 
 
 def prior_call_count(conn: sqlite3.Connection, call_id: str) -> int:
-<<<<<<< HEAD
-    """How many earlier calls this customer made, on any subject."""
-=======
     """How many earlier calls this customer made about the SAME issue.
 
     The attention factor this feeds is labelled "repeat contact about the same
@@ -189,8 +186,13 @@ def prior_call_count(conn: sqlite3.Connection, call_id: str) -> int:
     the brief actually asks about — "the complaint that came up nine times this
     week". Returns 0 when clustering hasn't run yet, so the factor simply
     doesn't fire rather than reverting to the inaccurate behaviour.
+
+    Cluster-based and used by the batch's later recompute_attention() pass,
+    once every call has a cluster to compare against. prior_same_issue_count()
+    below is the same idea keyed on intent instead — it has no such dependency,
+    so prepare_analysis() uses it for a single call analysed on its own (the
+    live /ingest path), where nothing has been clustered yet.
     """
->>>>>>> 8a8a291c25b82b4c97eff962844786f4a87dc6f4
     row = conn.execute(
         """
         SELECT COUNT(*) AS n
@@ -508,20 +510,75 @@ def recompute_attention(conn: sqlite3.Connection, median_handle_time: float) -> 
         points = mood.score_customer_turns(turns)
         shift = detect_reportable_shift(points, turns, stored)
 
+        # Same rule as prepare_analysis: cite the turn the minimum actually
+        # came from, only if it clears the verifier's quote-length floor.
+        worst_point = min(points, key=lambda p: p.score, default=None)
+        worst_mood = worst_point.score if worst_point else None
+        worst_mood_turn_index = (
+            worst_point.turn_index
+            if worst_point and is_citable_shift(stored[worst_point.turn_index].turn)
+            else None
+        )
+
         repeat_count = prior_call_count(conn, call_id)
         if repeat_count:
             repeats += 1
 
+        # Intent and resolution were already cited by the original analysis —
+        # reuse those turns rather than re-deriving them, so a rescore points
+        # at the same moment a fresh analysis would.
+        intent_turn_index = _cited_turn_index(conn, call_id, "intent", stored)
+        resolution_turn_index = _cited_turn_index(conn, call_id, "resolution", stored)
+
         attention = attention_score.compute_attention_score(
             resolution_status=row["resolution_status"],
-            worst_mood=min((p.score for p in points), default=None),
+            worst_mood=worst_mood,
             mood_shift_delta=shift.delta if shift else None,
             escalation_hits=mood.escalation_hits(turns),
             handle_time_seconds=row["duration_seconds"] or 0.0,
             median_handle_time_seconds=median_handle_time,
             is_repeat_contact=repeat_count > 0,
             repeat_count=repeat_count,
+            resolution_turn_index=resolution_turn_index,
+            worst_mood_turn_index=worst_mood_turn_index,
+            mood_shift_turn_index=shift.turn_index if shift else None,
+            intent_turn_index=intent_turn_index,
         )
+
+        # The shift just recomputed above supersedes whatever an earlier run
+        # stored on `calls.mood_shift_turn_id` — rebuild that citation to match,
+        # not just the attention factor. Written and committed BEFORE the
+        # factor loop below, so if "mood turned negative" cites this same turn,
+        # _factor_evidence finds and reuses this row instead of inserting a
+        # second, duplicate citation of the identical quote.
+        mood_shift_row = None
+        if shift is not None:
+            direction = "worse" if shift.delta < 0 else "better"
+            mood_shift_row = _build_evidence(
+                "mood_shift",
+                f"the customer's mood turned {direction} at this point in the call",
+                stored, shift.turn_index, check_support=False,
+            )
+
+        with conn:
+            conn.execute(
+                "DELETE FROM evidence WHERE call_id = ?"
+                " AND claim_type IN ('attention_factor', 'mood_shift')",
+                (call_id,),
+            )
+            if mood_shift_row:
+                conn.execute(
+                    """INSERT INTO evidence (call_id, claim_type, claim_text, turn_id,
+                                             timestamp, quote, match_score, support_score, verified)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (call_id, mood_shift_row.claim_type, mood_shift_row.claim_text,
+                     mood_shift_row.turn_db_id, mood_shift_row.timestamp, mood_shift_row.quote,
+                     mood_shift_row.match_score, mood_shift_row.support_score, mood_shift_row.verified),
+                )
+            conn.execute(
+                "UPDATE calls SET mood_shift_turn_id = ? WHERE id = ?",
+                (stored[shift.turn_index].db_id if shift else None, call_id),
+            )
 
         factors = [
             {"factor": f.factor, "weight": f.weight,
@@ -531,10 +588,7 @@ def recompute_attention(conn: sqlite3.Connection, median_handle_time: float) -> 
 
         with conn:
             conn.execute(
-                """
-                UPDATE calls SET attention_score = ?, attention_factors_json = ?
-                WHERE id = ?
-                """,
+                "UPDATE calls SET attention_score = ?, attention_factors_json = ? WHERE id = ?",
                 (attention.score, json.dumps(factors), call_id),
             )
         changed += 1
@@ -542,29 +596,74 @@ def recompute_attention(conn: sqlite3.Connection, median_handle_time: float) -> 
     return {"rescored": changed, "with_repeat_contact": repeats}
 
 
-def _factor_evidence(conn, call_id: str, factor, stored: list[StoredTurn]):
-    """Reuse the citation already stored for this factor, if there is one.
+def _cited_turn_index(
+    conn: sqlite3.Connection, call_id: str, claim_type: str, stored: list[StoredTurn]
+) -> int | None:
+    """The turn_index behind an already-stored citation of this claim type.
 
-    Re-verifying here would mean re-running the embedding model for every
-    factor on every call; the quote hasn't changed, so the stored verdict is
-    still valid.
+    Lets a rescore reuse the same moment prepare_analysis already cited for
+    intent/resolution, instead of re-deriving it — the underlying transcript
+    hasn't changed, so neither has where the evidence for it lives.
+    """
+    row = conn.execute(
+        "SELECT turn_id FROM evidence WHERE call_id = ? AND claim_type = ? LIMIT 1",
+        (call_id, claim_type),
+    ).fetchone()
+    if not row:
+        return None
+    for i, s in enumerate(stored):
+        if s.db_id == row["turn_id"]:
+            return i
+    return None
+
+
+def _factor_evidence(conn, call_id: str, factor, stored: list[StoredTurn]):
+    """The citation for one attention factor: reuse an existing citation at
+    this turn if one already exists (any claim type — the same moment already
+    proves the point, whichever judgment first cited it), otherwise build and
+    store a new one.
+
+    This mirrors prepare_analysis's `by_turn` reuse-or-build dict. Without the
+    "or build" half, a rescore could only ever *keep* citations a previous run
+    happened to create — for a first rescore, where none exist yet, every
+    factor would fall back to "no evidence" regardless of what
+    compute_attention_score actually cited.
     """
     if factor.turn_index is None or not (0 <= factor.turn_index < len(stored)):
         return None
     target = stored[factor.turn_index]
+
     row = conn.execute(
-        """
-        SELECT timestamp, quote, verified FROM evidence
-        WHERE call_id = ? AND turn_id = ? AND claim_type = 'attention_factor'
-        LIMIT 1
-        """,
+        "SELECT timestamp, quote, verified FROM evidence WHERE call_id = ? AND turn_id = ? LIMIT 1",
         (call_id, target.db_id),
     ).fetchone()
-    if not row:
+    if row:
+        return {
+            "turn_id": target.db_id,
+            "timestamp": row["timestamp"],
+            "quote": row["quote"],
+            "verified": bool(row["verified"]),
+        }
+
+    built = _build_evidence(
+        "attention_factor", factor.factor, stored, factor.turn_index,
+        check_support=factor.check_support,
+    )
+    if not built:
         return None
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO evidence (call_id, claim_type, claim_text, turn_id,
+                                   timestamp, quote, match_score, support_score, verified)
+            VALUES (?,?,?,?,?,?,?,?,?)
+            """,
+            (call_id, built.claim_type, built.claim_text, built.turn_db_id,
+             built.timestamp, built.quote, built.match_score, built.support_score, built.verified),
+        )
     return {
-        "turn_id": target.db_id,
-        "timestamp": row["timestamp"],
-        "quote": row["quote"],
-        "verified": bool(row["verified"]),
+        "turn_id": built.turn_db_id,
+        "timestamp": built.timestamp,
+        "quote": built.quote,
+        "verified": built.verified,
     }

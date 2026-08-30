@@ -195,12 +195,7 @@ def compute_attention_score(
         ordinal = _ordinal(repeat_count + 1)
         factors.append(
             AttentionFactor(
-<<<<<<< HEAD
-                factor=(
-                    f"repeat contact — {repeat_count} earlier call(s) about this same issue"
-                    if repeat_count
-                    else "repeat contact about the same issue"
-                ),
+                factor=f"{ordinal} call about this issue",
                 weight=round(contribution, 3),
                 # Cites this call's own intent turn: the customer stating the
                 # issue they are calling about again. The "again" is a database
@@ -211,12 +206,7 @@ def compute_attention_score(
                 # misleads is worse than one that is merely absent.
                 turn_index=intent_turn_index,
                 check_support=False,
-                detail=f"{repeat_count} prior call(s) on this issue" if repeat_count else "",
-=======
-                factor=f"{ordinal} call about this issue",
-                weight=round(contribution, 3),
-                detail=f"{repeat_count} earlier call(s) in the same issue cluster",
->>>>>>> 8a8a291c25b82b4c97eff962844786f4a87dc6f4
+                detail=f"{repeat_count} earlier call(s) about this issue",
             )
         )
 
