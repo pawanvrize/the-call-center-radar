@@ -36,50 +36,34 @@ PROSODY_WEIGHT = 0.3
 #: A gap longer than this between words is a hesitation, not natural rhythm.
 PAUSE_SECONDS = 0.45
 
-#: Below this many words, a turn gets no mood score at all — not a neutral one.
+#: Why there is no MIN_MOOD_WORDS gate here (there used to be one).
 #:
-#: Measured on this corpus, the per-call *worst* mood turn was under 5 words in
-#: 67% of calls, and those turns were: 'Certainly.', 'You as well.', 'Hi,',
-#: 'All right.', 'Savings?'. Neither half of the signal survives at that length.
-#: VADER reads the "no" in "no thank you" as anger (-0.49) when it is a polite
-#: decline; and a one-word turn's words-per-second is noise against the
-#: speaker's median, so a brisk "Hi," registers as agitation. Fused, these
-#: produced a "sustained negative customer mood" factor on 88% of calls — a
-#: claim that discriminates nothing and, worse, cannot be honestly cited: a
-#: quote of 'Certainly.' offered as proof of a negative mood is evidence that
-#: does not support the claim, which the brief scores NEGATIVE.
+#: The original version of this module excluded any customer turn under 5
+#: words from scoring entirely, because short turns were the source of the
+#: worst false positives: 'Certainly.' (+0.34), 'You as well.' (+0.27), and —
+#: via the prosody clamp, before MIN_WORDS_FOR_PROSODY existed — 'Savings?'
+#: scoring -0.30 from speaking-rate noise on a two-syllable turn.
 #:
-#: A short turn has *unknown* mood, not neutral mood, so it is excluded from the
-#: series rather than scored zero — averaging in fake neutrality would drag the
-#: change-point detector just as badly.
+#: But excluding short turns from the series entirely starves change-point
+#: detection: on this corpus that left an average of ~2.6 scoreable points per
+#: call, far too few for `ruptures` to ever find a breakpoint — measured
+#: directly, 387/400 calls failed at "no breakpoint found," before the
+#: negative-only or citability filters ever ran. A gate that fixes one false
+#: positive by making a different feature (mood shift) go silent everywhere is
+#: not a fix.
 #:
-#: This is deliberately the same floor the evidence verifier uses for quote
-#: length (`evidence_min_quote_words`), which buys a guarantee: every point in
-#: the mood series is long enough to quote, so every mood claim is citable by
-#: construction.
-MIN_MOOD_WORDS = 5
-
-#: …unless the words themselves are unambiguous. "This is absolutely
-#: unacceptable" is four words and nobody needs context to read it.
+#: MIN_WORDS_FOR_PROSODY below already neutralises the prosody half of the
+#: false positives (a short turn's rate/pause data is noise, so it's dropped,
+#: not trusted) and `is_mere_decline` neutralises the text half (a refusal
+#: read as anger). Verified on text alone, without the prosody clamp, none of
+#: the original offending turns score negative:
 #:
-#: The floor above exists because short turns carry no *reliable* signal, not
-#: because short turns can never matter. Measured with VADER, the two groups
-#: separate cleanly enough to draw a line between them:
+#:     'Certainly.' +0.34   'You as well.' +0.27   'Hi,' 0.0   'Savings?' 0.0
 #:
-#:     unacceptable -0.51   outrageous -0.46   furious -0.57   worst -0.63
-#:     'No thanks.' -0.34   'no thank you.' -0.28   'I lost my debit card.' -0.32
-#:
-#: -0.40 sits in that gap. It admits real anger and still excludes the polite
-#: declines and problem-reports that VADER scores negative for the wrong reason.
-#: This corpus contains none of the former, so on these 1,441 calls the override
-#: never fires — it is here for the recordings that do, a judge's live upload
-#: among them.
-#:
-#: Note this is the one path that can put an uncitable turn in the series: a
-#: four-word turn cannot satisfy the verifier's five-word quote floor. That is
-#: the right trade — the mood *timeline* should show real anger even when the
-#: attention factor beneath it has to report "no evidence" and score zero.
-STRONG_SENTIMENT = 0.40
+#: So every short turn can stay in the series — scored, not excluded — and
+#: still not be a false positive. attention_score.MOOD_CLAIM_FLOOR is the
+#: separate backstop that decides whether the *result* is negative enough to
+#: build a claim on, regardless of how long the turn was.
 
 #: Escalation phrases. Each hit is itself citable evidence (turn + quote) for
 #: the attention score, so this list is shared with attention_score.py.
@@ -165,18 +149,6 @@ def is_mere_decline(text: str) -> bool:
     return text_sentiment_score(" ".join(kept)) > -0.05
 
 
-def is_scorable(turn: Turn) -> bool:
-    """Does this turn carry enough signal to score at all?
-
-    Long enough to be reliable (MIN_MOOD_WORDS), or short but unambiguous
-    (STRONG_SENTIMENT). Word count comes from the text rather than the word
-    timings so a turn is judged the same way whichever provider transcribed it.
-    """
-    if len(turn.text.split()) >= MIN_MOOD_WORDS:
-        return True
-    return abs(text_sentiment_score(turn.text)) >= STRONG_SENTIMENT
-
-
 def text_sentiment_score(text: str) -> float:
     """Valence in [-1, 1]. Negative is unhappy."""
     if not text.strip():
@@ -243,11 +215,7 @@ def fused_mood_score(text_score: float, prosody: float) -> float:
 def score_customer_turns(turns: list[Turn]) -> list[MoodPoint]:
     """Score every customer turn in a call. Agent turns are not scored — the
     brief asks about the customer's mood."""
-    customer = [
-        (i, t)
-        for i, t in enumerate(turns)
-        if t.speaker == "customer" and is_scorable(t)
-    ]
+    customer = [(i, t) for i, t in enumerate(turns) if t.speaker == "customer"]
     if not customer:
         return []
 

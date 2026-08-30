@@ -160,12 +160,14 @@ def test_missing_turn_index_degrades_rather_than_inventing_one():
 
 
 def test_repeat_contact_factor_cites_the_intent_turn():
-    """The factor says "about the same issue", so it cites the customer stating
-    that issue. The count of earlier calls is a database fact carried in the
-    factor text — a quote cannot prove "again", only "about this"."""
-    f = one("repeat contact", is_repeat_contact=True, repeat_count=2, intent_turn_index=1)
+    """The factor says "about this issue", so it cites the customer stating
+    that issue. The ordinal count of earlier calls is a database fact carried
+    in the factor/detail text — a quote cannot prove "again", only "about
+    this"."""
+    f = one("call about this issue", is_repeat_contact=True, repeat_count=2, intent_turn_index=1)
     assert f.turn_index == 1
-    assert "2 earlier call" in f.factor
+    assert f.factor == "3rd call about this issue"
+    assert "2 earlier call" in f.detail
 
 
 def test_mood_factor_stays_silent_on_mild_negativity():
