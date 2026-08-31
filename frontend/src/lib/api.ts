@@ -72,10 +72,13 @@ export const getCustomerCalls = (customerId: string) =>
 export const getCall = (callId: string) =>
   apiGet<CallDetail>(`/calls/${encodeURIComponent(callId)}`);
 
-export const getAttention = (date?: string) =>
-  apiGet<AttentionResponse>(
-    date ? `/attention?date=${encodeURIComponent(date)}` : "/attention",
-  );
+export const getAttention = (date?: string, limit?: number) => {
+  const params = new URLSearchParams();
+  if (date) params.set("date", date);
+  if (limit) params.set("limit", String(limit));
+  const qs = params.toString();
+  return apiGet<AttentionResponse>(`/attention${qs ? `?${qs}` : ""}`);
+};
 
 export const getTrends = () => apiGet<TrendsResponse>("/trends");
 

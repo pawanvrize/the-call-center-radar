@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Headphones, PhoneCall, Radar, TrendingUp, Upload, Users } from "lucide-react";
+import { Activity, Headphones, LayoutDashboard, PhoneCall, Radar, TrendingUp, Upload, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/", label: "Attention", icon: Activity },
+  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/attention", label: "Attention", icon: Activity },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/trends", label: "Trends", icon: TrendingUp },
   { href: "/agents", label: "Agents", icon: Headphones },

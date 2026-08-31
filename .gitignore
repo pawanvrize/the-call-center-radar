@@ -59,3 +59,10 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# Planning/scratch docs — pre-build brainstorms, not part of the shipped
+# system (their useful ideas already made it into RADAR_PLAYBOOK.md /
+# README.md, or were deliberately rejected). Kept locally, not in the repo.
+differentiator.md
+implementation.md
+LANGGRAPH_REASONING.md

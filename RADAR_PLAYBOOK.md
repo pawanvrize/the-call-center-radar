@@ -5,6 +5,8 @@
 The brief has a trap door built in: *"a claim with no evidence scores zero; evidence that doesn't support the claim scores negative."* Most teams will bolt an LLM onto a transcript and hope its vibes hold up under a judge's click. This plan is built around never needing hope — every mood, intent, and score is produced by something measurable, and the system cannot emit a citation it hasn't verified.
 
 > **Revision note.** This document was rewritten after measuring the actual dataset. The first draft assumed ~120 hours of audio and a flat metadata schema; both were wrong, and several decisions downstream of them changed. Everything marked **measured** below was verified directly against the files in `data/`.
+>
+> **Second revision note.** The sections below marked *(as built)* were updated once more, after the system was actually finished, to match what shipped rather than what was planned — three things changed in the build that this document originally didn't anticipate: reasoning gained three fallback providers beyond Groq (`bedrock`/`azure`/`ollama`), clustering ended up as HDBSCAN + c-TF-IDF naming rather than BERTopic/FASTopic (noise stayed under the 30% threshold that would have forced the switch), and two new rule-based checks were added on top of the verifier — a **Resolution Reality Check** and a per-call **Evidence Coverage Score** (see bet 05 below). Everything else — the corpus measurements, the rejected alternatives, the demo script — held up and is unchanged.
 
 ---
 
@@ -72,54 +74,59 @@ Alongside it, every call and the dashboard header now surface an **Evidence Cove
 
 ---
 
-## Architecture
+## Architecture *(as built)*
 
 ```mermaid
 flowchart LR
-    A["audio/&lt;sid&gt;.mp3<br/>stereo 8kHz"] --> B["AssemblyAI<br/>multichannel=true"]
-    A --> C["ffmpeg channel split<br/>customer.wav only"]
-    B --> D["channel-tagged words<br/>→ turn merge"]
-    C --> E["prosody<br/>rate · pause · energy"]
-    D --> F["text sentiment<br/>per customer turn"]
-    E --> G["fused mood series"]
-    F --> G
-    G --> H["ruptures PELT<br/>→ shift turn_id"]
-    D --> I["numbered turns"]
-    I --> J["gpt-oss-20b<br/>strict json_schema"]
-    J --> K["{label, turn_id}<br/>no quotes emitted"]
-    K --> L["quote lookup<br/>from our own DB"]
+    A["audio/&lt;sid&gt;.mp3<br/>stereo 8kHz"] --> B{"TRANSCRIBER_PROVIDER"}
+    B -->|assemblyai, default| C["multichannel=true<br/>one job, channel-tagged"]
+    B -->|whisper, offline| D["ffmpeg channel split<br/>→ two faster-whisper passes"]
+    C --> E["turn merge<br/>pause-split + crosstalk flag"]
+    D --> E
+    E --> F["text sentiment · VADER<br/>+ prosody from word timing"]
+    F --> G["fused mood series"]
+    G --> H["ruptures PELT<br/>→ shift turn_id, or none"]
+    E --> I["numbered turns"]
+    I --> J{"LLM_PROVIDER"}
+    J -->|groq, default| K
+    J -.->|bedrock · azure · ollama| K["strict json_schema<br/>{label, turn_id} — no quotes emitted"]
+    K --> L["quote lookup<br/>from our own DB, never the model"]
     H --> L
-    L --> M["verifier<br/>span + entailment"]
-    M --> N[("SQLite<br/>calls · turns · evidence")]
-    N --> O["embeddings + topic model<br/>trending issues"]
-    N --> P[FastAPI]
+    L --> M["verifier<br/>span check + entailment check"]
+    M --> N["attention score<br/>declared weighted sum"]
+    M --> O["resolution reality check<br/>agent claim vs. customer's later words"]
+    N --> P[("SQLite<br/>calls · turns · evidence · clusters")]
     O --> P
-    P --> Q["Next.js dashboard"]
-    P --> R["POST /ingest<br/>live demo path"]
+    P --> Q["HDBSCAN + c-TF-IDF<br/>trending issues, batch"]
+    Q --> P
+    P --> R[FastAPI]
+    R --> S["Next.js dashboard"]
+    R --> T["POST /ingest<br/>same pipeline, live"]
 ```
 
 ---
 
-## The stack
+## The stack *(as built)*
 
 | Layer | Choice | Why this one |
 |---|---|---|
 | **Bulk ASR** | AssemblyAI `multichannel=True` | One request per call returning channel-tagged words. ~46.6 channel-hours × $0.15 ≈ **$7** of the $50 credit. No ffmpeg split needed for ASR. |
-| **Live `/ingest` ASR** | Groq `whisper-large-v3-turbo` | $0.04/hr, an hour of audio in ~15s. A judge's call transcribes in ~2s on stage. |
-| **Offline ASR** | `faster-whisper small.en` int8 | Zero key, zero network. Keeps "runs from scratch" true and is the demo-day safety net. |
-| **Speaker attribution** | stereo channels | Correct by construction. **Never** `speaker_labels`. |
-| **Reasoning** | Groq **`openai/gpt-oss-20b`** | **Only the `gpt-oss` models support strict `json_schema` on Groq** — everything else is `json_object` (valid JSON, no schema adherence). 1000 tok/s, production tier. |
-| **Reasoning fallback** | Ollama `qwen3:8b` + `format` schema | Offline path. 7-8B class, not 14B — Docker has 8 GB. |
-| **Text sentiment** | small local classifier per turn | Carries ~all the mood signal on this corpus |
-| **Prosody** | speaking rate, pause length, RMS — from word timestamps | Cheap. Deliberately not pitch-tracking; see *Rejected*. |
-| **Change point** | `ruptures` PELT, 3-turn smoothed | Guard n<5; smooth before detecting or you detect noise |
-| **Embeddings** | `bge-small-en-v1.5` (33M) | CPU-fast, ample for ≤40-word summaries |
-| **Clustering** | BERTopic → **FASTopic** if noisy | Short text is BERTopic's weak spot. If the `-1` noise cluster exceeds ~30%, switch to FASTopic (NeurIPS 2024) — faster and more coherent on short docs. |
-| **Verification** | `rapidfuzz` + entailment check | The rubric, as code |
-| **Storage** | SQLite + transcript JSON disk cache | Precomputed once, read-only at request time |
-| **Backend** | FastAPI | Auto OpenAPI docs, one process |
-| **Frontend** | Next.js 16 (App Router) + Tailwind v4 | Rewrites `/api/*` and `/audio/*` to FastAPI — no CORS, and audio Range requests stay same-origin |
-| **Eval** | `jiwer` + the verifier's own pass rate | Numbers a judge can't wave away |
+| **Live `/ingest` ASR** | *the same provider as the batch* | No separate live-path model — `/ingest` calls the identical `transcribe_call()` function the overnight batch does, under whichever `TRANSCRIBER_PROVIDER` is configured. A demo call is not a separate happy path. |
+| **Offline ASR** | `faster-whisper small.en` int8 | Zero key, zero network. Keeps "runs from scratch" true and is the demo-day safety net. Splits channels via `ffmpeg` first (AssemblyAI's multichannel mode needs no such split — it ingests the stereo file directly). |
+| **Speaker attribution** | stereo channels | Correct by construction, for 97.6% of the corpus — see bet 01 below for the 2.4% it wasn't. **Never** `speaker_labels`. |
+| **Reasoning** | Groq **`openai/gpt-oss-20b`**, default | **Only the `gpt-oss` models support strict `json_schema` on Groq** — everything else is `json_object` (valid JSON, no schema adherence). Free tier, no card. |
+| **Reasoning fallbacks** | `bedrock` (`openai.gpt-oss-120b-1:0` via the Converse API) · `azure` OpenAI · `ollama` `qwen3:8b` | One line in `.env` switches providers; the schema and the no-quotes-allowed guarantee hold identically on all four. |
+| **Text sentiment** | VADER (lexicon-based) per customer turn | Deterministic, instant, no model download — and the exact word that moved the score can always be pointed at. |
+| **Prosody** | speaking rate and pause ratio, from word timestamps already in hand | No audio re-decode. Deliberately not pitch-tracking or energy; see *Rejected*. |
+| **Change point** | `ruptures` PELT, 3-turn smoothed, adaptive penalty | Guard n<5; smooth before detecting or you detect noise; a fixed penalty found 0/120 real shifts in testing. |
+| **Embeddings** | `bge-small-en-v1.5` via `fastembed` (ONNX) | CPU-fast, ~50MB vs. ~2.5GB for the torch build — no dependency the ASR step doesn't already carry. |
+| **Clustering** | `sklearn.cluster.HDBSCAN` + c-TF-IDF naming | Noise stayed under the ~30% threshold that would have forced a switch to FASTopic, so the simpler, dependency-free option shipped. Naming is free — no LLM call. |
+| **Verification** | `rapidfuzz` span check + embedding/lexical entailment check | The rubric, as code. |
+| **Reality check** | phrase match, agent claim vs. customer's later words | Rule-based, no LLM — see bet 05. |
+| **Storage** | SQLite (WAL) + transcript JSON disk cache | Precomputed once, read-only at request time. |
+| **Backend** | FastAPI | Auto OpenAPI docs, one process. |
+| **Frontend** | Next.js (App Router) + Tailwind v4 | Rewrites `/api/*` and `/audio/*` to FastAPI — no CORS, and audio Range requests stay same-origin. |
+| **Eval** | `jiwer` (optional, needs a gold set) + the verifier's own re-checked pass rate | Numbers a judge can't wave away. |
 
 ### Voice-based emotion — tested and rejected
 
@@ -174,15 +181,15 @@ On-demand processing has exactly one correct home: `POST /ingest`, for a recordi
 
 ---
 
-## Pipeline stages
+## Pipeline stages *(as built)*
 
-**1 · Transcription.** Submit the stereo mp3 with `multichannel=True`; the response carries `audio_channels` and per-utterance `channel` labels with word timestamps. Merge both channels' segments by start time, collapsing consecutive same-speaker segments into turns and flagging genuine time-overlaps as crosstalk rather than forcing false sequential order.
+**1 · Channel split + transcription.** AssemblyAI ingests the stereo mp3 directly with `multichannel=True`, returning per-utterance `channel` labels and word timestamps — no split needed. The offline `faster-whisper` path splits the file into `agent.wav`/`customer.wav` via `ffmpeg` first and transcribes each independently, since Whisper only sees one speaker at a time. Either way, output is merged by timestamp into turns: consecutive same-speaker segments within a short gap collapse into one turn, and genuine time-overlaps are flagged as crosstalk rather than forced into a false sequential order.
 
-**Cache every transcript response to `data/cache/<sid>.json` before any downstream work.** The analysis layer gets re-run twenty times while tuning prompts; it must never re-transcribe. This single decision is the difference between a 10-second iteration loop and a 1-hour one.
+**Cache every transcript response to `data/cache/<sid>.<provider>.json` before any downstream work.** The analysis layer gets re-run many times while tuning prompts; it must never re-transcribe. This single decision is the difference between a 10-second iteration loop and a 1-hour one, and it means a re-run never re-spends ASR credit.
 
-**2 · Mood.** Per customer turn: text sentiment fused with speaking rate, pause length, and RMS energy — the latter three derived from word timestamps already in hand. Documented weights (~0.7 text / 0.3 prosody), not a black box. Smooth over 3 turns, then run PELT for the shift point.
+**2 · Mood.** Per customer turn only: VADER text sentiment fused with prosody (speaking rate and pause ratio, both derived from word timestamps already in hand — no audio re-decode, no RMS energy). Documented weights (0.7 text / 0.3 prosody), not a black box. A turn whose only negativity is a bare refusal word ("No, that's it.") is re-scored with the refusal stripped, so a calm decline doesn't read as distress. The series is smoothed over 3 turns and filtered to substantive turns (pleasantries and dictated data excluded) before PELT looks for the shift point — a real breakpoint on an unquotable turn is reported as no shift, not a claim nobody can check.
 
-**3 · Grounded reasoning.** Feed numbered turns to `gpt-oss-20b` under a strict schema:
+**3 · Grounded reasoning.** Feed numbered turns to the configured provider (`groq` by default; `bedrock`/`azure`/`ollama` as interchangeable fallbacks — see *The stack*) under a strict schema:
 
 ```json
 { "intent":     {"label": "dispute a duplicate charge", "turn_id": 4},
@@ -190,13 +197,15 @@ On-demand processing has exactly one correct home: `POST /ingest`, for a recordi
   "summary":    "Customer disputes a duplicate charge; agent opens a case but gives no refund timeline." }
 ```
 
-No `quote` field exists in the schema. We resolve `turn_id` → verbatim text ourselves. Strict mode requires all fields `required` and `additionalProperties: false`; use `["string","null"]` unions for optional fields.
+No `quote` field exists in the schema. We resolve `turn_id` → verbatim text ourselves, clamped into range in case the model returns something out of bounds. Strict mode requires all fields `required` and `additionalProperties: false`.
 
-**4 · Verification.** For each resolved evidence object: confirm the span within the turn (`rapidfuzz`, minimum ~5-word quotes — short quotes inflate `partial_ratio`), then score claim-vs-quote entailment. Below threshold, the claim is stored **unverified** and rendered as such, never silently shown as fact.
+**4 · Verification.** For each resolved evidence object: confirm the span within the turn (`rapidfuzz`, minimum ~5-word quotes — short quotes inflate `partial_ratio`), then score claim-vs-quote entailment (embedding similarity, falling back to lexical similarity if the embedding model is unavailable). Below threshold, the claim is stored **unverified** and rendered as such, never silently shown as fact. Citations that point at our own computed statistic rather than a model assertion — the mood-shift turn, an attention factor reusing it — skip the entailment half by design; entailment-checking a factual pointer against a mood claim is a category error, measured at 0/10 pass doing exactly that.
 
-**5 · Attention score.** Computed here, not asked for. Mood severity, mood volatility, resolution status, escalation lexicon hits, handle-time outliers, and repeat-contact each carry a documented weight. The LLM narrates factors; this module owns the arithmetic.
+**5 · Attention score.** Computed here, not asked for. Resolution status, mood severity, mood shift, escalation lexicon hits, repeat-contact, and handle-time outliers each carry a documented weight (see `attention_score.py`). The LLM narrates factors; this module owns the arithmetic, so the ranking is stable and auditable rather than a model's opinion of its own urgency.
 
-**6 · Cross-call.** Embed summaries, cluster, bucket by day. Same customer + same cluster within N days → repeat contact, which folds back into the attention score.
+**6 · Resolution reality check.** A second, fully rule-based pass on top of stage 3's judgment: when a call is marked resolved, does the agent's own turn actually claim it, and does the customer's *later* turn contradict it? No LLM call. Both quotes go through the same verifier as every other citation.
+
+**7 · Cross-call.** Once every call has a summary, embed `intent + summary` (`bge-small-en-v1.5`), cluster with HDBSCAN, name clusters with c-TF-IDF (no LLM). Same customer + same cluster within a recent window → repeat contact, which folds back into the attention score. Clustering has to run in a separate pass after per-call analysis, and repeat-contact scoring after clustering — the ordering is analyse → cluster → rescore.
 
 ---
 
@@ -210,25 +219,32 @@ No `quote` field exists in the schema. We resolve `turn_id` → verbatim text ou
 
 ---
 
-## API surface
+## API surface *(as built)*
 
 | Endpoint | Returns |
 |---|---|
 | `GET /customers` | Every customer by name, call count, last contact |
 | `GET /customers/{id}/calls` | That customer's full call history |
-| `GET /calls/{id}` | Turns with speaker + timing, intent, mood timeline + shift, resolution, ≤40-word summary, attention score + factors — each with evidence |
-| `GET /attention?date=` | Ranked "needs a manager today", defaulting to 2020-06-02 |
-| `GET /trends` | Issue clusters with time-bucketed frequency |
-| `GET /agents` | Per-agent volume, handle time, resolution rate |
-| `POST /ingest` | Full pipeline on a new recording — the live-demo path |
+| `GET /calls/{id}` | Turns with speaker + timing, intent, mood timeline + shift, resolution, ≤40-word summary, attention score + factors, resolution reality check, evidence coverage — each judgment with its evidence |
+| `GET /attention?date=` | Ranked "needs a manager today", defaulting to the most recent day with calls, plus corpus-wide evidence coverage |
+| `GET /trends` | Every issue cluster against the corpus baseline — resolution rate, attention, handle time, volume by day |
+| `GET /trends/{cluster_id}/calls` | The calls behind one trending issue, worst-first |
+| `GET /agents` | Per-agent volume, handle time, resolution rate, plus each agent's weakest issue vs. their own baseline |
+| `GET /agents/{id}/issues` | One agent's full per-issue breakdown |
+| `GET /repeat-contacts` | Same customer, same issue cluster, 3+ calls — the brief's own example |
+| `POST /ingest` | Full pipeline on a new recording — the live-demo path, identical code to the batch |
+| `GET /audio/{path}` | Static file mount, HTTP Range support, so the player can seek without downloading the whole file |
+| `GET /health` | Liveness check |
 
-SQLite, precomputed at ingestion, read-only at request time. Add a dedicated `evidence` table (`call_id, claim_type, turn_id, quote, match_score, verified`) so the eval harness's citation pass-rate is one SQL query rather than JSON spelunking. Index `calls(started_at)`, `calls(attention_score)`, `calls(customer_id)`. An FTS5 virtual table over turn text costs ~10 lines and buys full-text search across all 1,441 calls — a strong demo moment for free.
+SQLite (WAL mode), precomputed at ingestion, read-only at request time — every judgment above is stored with its evidence in a dedicated `evidence` table (`call_id, claim_type, turn_id, quote, match_score, support_score, verified`), so the eval harness's citation pass-rate is one SQL query, not JSON spelunking. Indexed on `calls(started_at)`, `calls(attention_score)`, `calls(customer_id)`, `evidence(call_id, claim_type)`.
 
 ---
 
 ## Build order
 
-The scaffold currently has no working vertical slice. Don't build breadth before one call works end to end.
+*(historical — the order actually followed, kept for anyone extending the system the same way)*
+
+Don't build breadth before one call works end to end.
 
 | Step | Work |
 |---|---|
