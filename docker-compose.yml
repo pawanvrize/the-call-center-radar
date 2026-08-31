@@ -25,7 +25,18 @@ services:
       # faster-whisper downloads its model from HuggingFace on first use.
       # Without this, every `docker compose run --rm` re-downloads it.
       - hf_cache:/root/.cache/huggingface
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # --reload-dir restricts the file watcher to actual source code. Without
+    # it, --reload's default is to watch the whole working directory — which
+    # includes ./data (bind-mounted at /app/data just above). SQLite creates
+    # and touches -wal/-shm sidecar files as a normal side effect of opening a
+    # connection; the watcher sees those change, restarts the app, which opens
+    # a connection during startup, which touches them again — a self-inflicted
+    # crash loop. Hit live: every restart failed identically with "disk I/O
+    # error" on the schema's own executescript(), because the file was mid-write
+    # from the *previous* restart's half-finished connection when the next one
+    # began. Scoping the watch to source-only makes the loop structurally
+    # impossible rather than papering over one symptom of it.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app --reload-dir scripts
 
   frontend:
     build: ./frontend
