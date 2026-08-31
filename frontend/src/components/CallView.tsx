@@ -67,7 +67,7 @@ export default function CallView({ call }: { call: CallDetail }) {
           </div>
 
           <aside className="space-y-6">
-            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <Claim
                 label="Intent"
                 value={
@@ -134,7 +134,7 @@ export default function CallView({ call }: { call: CallDetail }) {
             />
 
             {call.evidence_coverage !== null && (
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Evidence coverage
                 </span>

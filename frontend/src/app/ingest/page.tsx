@@ -24,7 +24,7 @@ export default function IngestPage() {
 
       <IngestForm />
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <p className="font-medium text-slate-700 dark:text-slate-300">
           What happens to the recording
         </p>

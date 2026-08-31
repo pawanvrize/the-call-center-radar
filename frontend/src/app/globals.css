@@ -1,22 +1,14 @@
 @import "tailwindcss";
 
-/* The theme is deliberately light-only. Every `dark:` class already sprinkled
-   through the components (from the original Next.js starter) would otherwise
-   follow the OS via prefers-color-scheme — and the card-elevation design this
-   pass builds on (shadow-sm + a one-shade-darker canvas) doesn't survive that:
-   box-shadows disappear against a near-black background, leaving cards and
-   canvas indistinguishable. Rather than design and tune a second, separate
-   dark palette under time pressure, redefine Tailwind's `dark:` variant to key
-   off a `.dark` class instead of system preference — since nothing ever adds
-   that class, every `dark:` utility in the codebase simply goes inert. The
-   classes stay in place, so wiring up a real toggle later is a small, additive
-   change rather than a rewrite. */
-@custom-variant dark (&:where(.dark, .dark *));
-
-/* Canvas vs. card: the body sits one shade back (slate-50) so the white cards
-   every page is built from (rounded-xl + shadow-sm containers) actually read
-   as elevated surfaces instead of blending into the page — the standard
-   fintech-dashboard "cards on a canvas" look. */
+/* Follows the browser/OS setting (Tailwind's default `dark:` behaviour, keyed
+   off prefers-color-scheme — not a manual toggle). Canvas vs. card: the body
+   sits one shade back from the cards every page is built from (rounded-xl +
+   shadow-sm containers), so they read as elevated surfaces instead of
+   blending into the page. In dark mode specifically, shadows alone don't
+   read against a near-black canvas, so the separation there leans on a
+   two-step background jump (950 canvas -> 800 card) plus a lighter visible
+   border, not shadow — see the dark:bg-slate-800/dark:border-slate-700 pairs
+   on card containers throughout the components. */
 :root {
   --background: #f8fafc; /* slate-50 */
   --foreground: #0f172a; /* slate-900 */
@@ -27,6 +19,13 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #020617; /* slate-950 */
+    --foreground: #e2e8f0; /* slate-200 */
+  }
 }
 
 body {

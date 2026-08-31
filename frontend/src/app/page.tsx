@@ -23,7 +23,7 @@ export default async function AttentionDashboard({
           </p>
         </div>
         {data?.evidence_coverage_pct !== null && data?.evidence_coverage_pct !== undefined && (
-          <div className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-right shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <p className="font-mono text-xl font-semibold tabular-nums">
               {data.evidence_coverage_pct}%
             </p>
@@ -77,7 +77,7 @@ export default async function AttentionDashboard({
             <li key={call.id}>
               <Link
                 href={`/calls/${encodeURIComponent(call.id)}`}
-                className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
               >
                 <span
                   className={cn(

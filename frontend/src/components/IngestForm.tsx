@@ -157,7 +157,7 @@ export default function IngestForm() {
       </button>
 
       {busy && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <p className="flex items-center gap-2 text-sm">
             <Loader2 size={14} className="animate-spin text-blue-500" />
             {STAGES[stage]}

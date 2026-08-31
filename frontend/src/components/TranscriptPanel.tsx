@@ -38,7 +38,7 @@ export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
   return (
     <div
       ref={scrollRef}
-      className="max-h-[28rem] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+      className="max-h-[28rem] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
     >
       {turns.map((turn) => {
         const isActive = turn.id === activeId;
