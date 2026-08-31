@@ -113,7 +113,7 @@ measured on this corpus — not just the *what* shown here.
 </td>
 <td width="50%">
 
-**Call detail**
+
 
 <img src="docs/screenshots/call-detail.png" alt="Call detail with evidence chips" width="100%">
 
@@ -129,7 +129,7 @@ measured on this corpus — not just the *what* shown here.
 </td>
 <td width="50%">
 
-**Agents**
+
 
 <img src="docs/screenshots/agents.png" alt="Agent performance" width="100%">
 
@@ -137,7 +137,6 @@ measured on this corpus — not just the *what* shown here.
 </tr>
 </table>
 
-**Analyse a call**
 
 <img src="docs/screenshots/ingest.png" alt="Analyse a new call" width="70%">
 
