@@ -106,8 +106,9 @@ from; clicking one seeks the waveform to that second.
 <td width="50%">
 
 **Trends** — issue clusters discovered from the call summaries themselves,
-against the corpus baseline. Underperforming issues are flagged above the
-list rather than buried in it.
+each measured against the corpus-wide baseline (resolved %, avg attention,
+avg handle time) rather than shown as a bare count, with each day's *share*
+of that issue's calls alongside.
 
 <img src="docs/screenshots/trends.png" alt="Trending issues" width="100%">
 
