@@ -2,36 +2,70 @@
 // "across all calls" questions (who needs attention today, what's trending,
 // how are agents doing) plus the headline trust number, each linking through
 // to its full page rather than duplicating it.
+//
+// Built to be scanned, not read: the one number that actually needs a
+// decision (critical calls today) gets a status banner of its own, with
+// color carrying the verdict before anyone reads a digit. Everything below
+// it is a preview, three rows deep, existing purely to justify the banner.
 import Link from "next/link";
-import { ArrowRight, Headphones, PhoneCall, ShieldCheck, TrendingUp } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Headphones,
+  PhoneCall,
+  ShieldCheck,
+  TrendingUp,
+} from "lucide-react";
 import { getAgents, getAttention, getRepeatContacts, getTrends } from "@/lib/api";
 import { attentionTone, cn, formatSeconds } from "@/lib/utils";
 import ApiNotice from "@/components/ApiNotice";
 
-/** Matches attentionTone()'s own amber/red boundary — "needs attention" means
- *  the same thing here as the color on every badge across the app. */
+/** Matches attentionTone()'s own boundaries, so a color here means the same
+ *  thing it means on every badge elsewhere in the app. */
+const CRITICAL_THRESHOLD = 75;
 const FLAGGED_THRESHOLD = 50;
+
+type Tone = "neutral" | "good" | "warning" | "critical";
+
+const TONE_TEXT: Record<Tone, string> = {
+  neutral: "text-slate-800 dark:text-slate-100",
+  good: "text-emerald-600 dark:text-emerald-400",
+  warning: "text-amber-600 dark:text-amber-400",
+  critical: "text-red-600 dark:text-red-400",
+};
+const TONE_DOT: Record<Tone, string> = {
+  neutral: "bg-slate-300 dark:bg-slate-600",
+  good: "bg-emerald-500",
+  warning: "bg-amber-500",
+  critical: "bg-red-500",
+};
 
 function StatCard({
   label,
   value,
   sub,
   icon: Icon,
+  tone = "neutral",
 }: {
   label: string;
   value: string;
   sub?: string;
   icon: React.ElementType;
+  tone?: Tone;
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span className={cn("h-1.5 w-1.5 rounded-full", TONE_DOT[tone])} />
           {label}
         </p>
         <Icon size={15} className="text-slate-400" />
       </div>
-      <p className="mt-2 font-mono text-2xl font-semibold tabular-nums">{value}</p>
+      <p className={cn("mt-2 font-mono text-2xl font-semibold tabular-nums", TONE_TEXT[tone])}>
+        {value}
+      </p>
       {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
     </div>
   );
@@ -47,8 +81,10 @@ function SectionHead({
   linkLabel?: string;
 }) {
   return (
-    <div className="flex items-baseline justify-between">
-      <h2 className="text-base font-semibold">{title}</h2>
+    <div className="flex items-baseline justify-between border-b border-slate-200 pb-2 dark:border-slate-800">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+        {title}
+      </h2>
       <Link
         href={href}
         className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
@@ -71,9 +107,23 @@ export default async function Overview() {
     (e): e is string => e !== null,
   );
 
-  const flaggedToday =
-    attention.data?.calls.filter((c) => (c.attention_score ?? 0) >= FLAGGED_THRESHOLD)
-      .length ?? null;
+  const todaysCalls = attention.data?.calls ?? [];
+  const criticalCount = todaysCalls.filter(
+    (c) => (c.attention_score ?? 0) >= CRITICAL_THRESHOLD,
+  ).length;
+  const flaggedCount = todaysCalls.filter(
+    (c) => (c.attention_score ?? 0) >= FLAGGED_THRESHOLD,
+  ).length;
+  const topScore = todaysCalls.reduce((max, c) => Math.max(max, c.attention_score ?? 0), 0);
+
+  const attentionToneCard: Tone = criticalCount > 0 ? "critical" : flaggedCount > 0 ? "warning" : "good";
+
+  const coveragePct = attention.data?.evidence_coverage_pct ?? null;
+  const coverageTone: Tone =
+    coveragePct == null ? "neutral" : coveragePct >= 85 ? "good" : coveragePct >= 70 ? "warning" : "critical";
+
+  const unresolvedRepeats = repeats.data?.filter((r) => r.unresolved_count > 0).length ?? 0;
+  const repeatsTone: Tone = unresolvedRepeats > 0 ? "warning" : (repeats.data?.length ?? 0) > 0 ? "neutral" : "good";
 
   const topIssues = trends.data
     ? [...trends.data.issues]
@@ -104,6 +154,59 @@ export default async function Overview() {
 
       {errors.length > 0 && <ApiNotice error={errors[0]} />}
 
+      {/* The one verdict this page exists to deliver, stated before any
+          number is read — color and words agree, never color alone. */}
+      {attention.data &&
+        (criticalCount > 0 ? (
+          <div className="flex items-center gap-3 rounded-lg border border-red-500/40 bg-red-500/5 p-4">
+            <AlertTriangle size={18} className="shrink-0 text-red-600 dark:text-red-400" />
+            <p className="text-sm">
+              <span className="font-semibold text-red-700 dark:text-red-400">
+                {criticalCount} call{criticalCount > 1 ? "s" : ""} scored 75+
+              </span>{" "}
+              <span className="text-slate-600 dark:text-slate-400">
+                and need review today ({attention.data.date}).
+              </span>
+            </p>
+            <Link
+              href="/attention"
+              className="ml-auto shrink-0 flex items-center gap-1 text-sm font-medium text-red-700 hover:underline dark:text-red-400"
+            >
+              Review now <ArrowRight size={14} />
+            </Link>
+          </div>
+        ) : flaggedCount > 0 ? (
+          <div className="flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
+            <AlertTriangle size={18} className="shrink-0 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm">
+              <span className="font-semibold text-amber-700 dark:text-amber-400">
+                {flaggedCount} call{flaggedCount > 1 ? "s" : ""} worth a look
+              </span>{" "}
+              <span className="text-slate-600 dark:text-slate-400">
+                today ({attention.data.date}) — none critical yet.
+              </span>
+            </p>
+            <Link
+              href="/attention"
+              className="ml-auto shrink-0 flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline dark:text-amber-400"
+            >
+              Review <ArrowRight size={14} />
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4">
+            <CheckCircle2 size={18} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <p className="text-sm">
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                Nothing urgent today
+              </span>{" "}
+              <span className="text-slate-600 dark:text-slate-400">
+                ({attention.data.date}) — highest score is {topScore || "—"}.
+              </span>
+            </p>
+          </div>
+        ))}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           label="Total calls"
@@ -112,26 +215,25 @@ export default async function Overview() {
           icon={Headphones}
         />
         <StatCard
-          label="Needs attention today"
-          value={flaggedToday !== null ? String(flaggedToday) : "—"}
-          sub={attention.data?.date ? `of ${attention.data.calls.length} on ${attention.data.date}` : undefined}
+          label="Critical today"
+          value={attention.data ? String(criticalCount) : "—"}
+          sub={attention.data ? `${flaggedCount} flagged of ${todaysCalls.length}` : undefined}
           icon={ShieldCheck}
+          tone={attentionToneCard}
         />
         <StatCard
           label="Evidence coverage"
-          value={
-            attention.data?.evidence_coverage_pct != null
-              ? `${attention.data.evidence_coverage_pct}%`
-              : "—"
-          }
+          value={coveragePct != null ? `${coveragePct}%` : "—"}
           sub="citations that passed verification"
           icon={TrendingUp}
+          tone={coverageTone}
         />
         <StatCard
           label="Repeat-contact patterns"
           value={repeats.data ? String(repeats.data.length) : "—"}
-          sub="customer × issue, 3+ calls"
+          sub={repeats.data ? `${unresolvedRepeats} with an unresolved call` : "customer × issue, 3+ calls"}
           icon={PhoneCall}
+          tone={repeatsTone}
         />
       </div>
 
