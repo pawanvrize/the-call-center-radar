@@ -80,10 +80,21 @@ _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 #: detected" — true by construction. Entailment-checking that factual pointer
 #: against a statement about mood is a category error and rejects 100% of them.
 #:
+#: "attention_factor" belongs here too, for the same reason: an attention
+#: factor that reuses an already-cited turn (e.g. "issue unresolved" pointing
+#: at the resolution turn) is deduplicated into that claim's own row before
+#: ever being stored as attention_factor — so every row that actually reaches
+#: this claim_type is a pointer citation like "sustained negative customer
+#: mood" (the turn the mood-series minimum came from), never a fresh model
+#: assertion. Measured directly: every attention_factor row in the corpus is
+#: exactly that one factor, and entailment-checking it the same way rejected
+#: 18/18 — the harness disagreeing with production's own rules, not a real
+#: quality problem.
+#:
 #: Defined here rather than at the call site so analyze.py and the eval harness
 #: cannot drift apart: a harness that scores citations by different rules than
 #: production reports a number the dashboard does not agree with.
-SPAN_ONLY_CLAIM_TYPES = frozenset({"mood_shift"})
+SPAN_ONLY_CLAIM_TYPES = frozenset({"mood_shift", "attention_factor"})
 
 
 def claim_for(claim_type: str, claim_text: str) -> str | None:
