@@ -120,8 +120,16 @@ class AssemblyAIProvider(Transcriber):
         if existing:
             try:
                 return self._aai.Transcript.get_by_id(existing)
-            except Exception:
-                # The saved job is gone or unreadable — fall through and resubmit.
+            except Exception as e:
+                # The saved job is gone or unreadable — fall through and
+                # resubmit. Logged, not raised: a resubmit is the correct
+                # recovery for one dead job id, but if this starts firing on
+                # every call it means something systemic (bad API key,
+                # account issue) and that needs to be visible, not silent.
+                logging.getLogger(__name__).info(
+                    "AssemblyAI job %s for %s unresumable (%s: %s) — resubmitting",
+                    existing, call_id, type(e).__name__, e,
+                )
                 self._clear_job_id(call_id)
 
         config = self._aai.TranscriptionConfig(

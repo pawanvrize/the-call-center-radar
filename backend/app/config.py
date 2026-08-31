@@ -1,7 +1,22 @@
 """Central runtime configuration, loaded once from the environment."""
+import logging
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Nothing else in the app calls logging.basicConfig(), so every
+# logging.getLogger(__name__).warning(...) in the pipeline (a malformed
+# AssemblyAI channel value, a zero-segment Whisper channel, a failed
+# embedding-model load) was reaching stderr only via Python's undocumented
+# `logging.lastResort` fallback handler — no timestamp, and one NullHandler
+# registered by any dependency would silently kill it. Configured here rather
+# than in main.py because this module — unlike main.py — is imported by every
+# entry point: the API server, the batch scripts, and a bare pipeline call,
+# so it's the one place guaranteed to run before any warning can fire.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 
 #: Where `./data/...` points.

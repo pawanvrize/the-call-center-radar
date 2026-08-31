@@ -16,6 +16,7 @@ request per cluster and renames things between runs.
 Also backs repeat-contact detection: same customer + same cluster + within N
 days, which feeds the attention score.
 """
+import logging
 import math
 import re
 from collections import Counter
@@ -170,7 +171,16 @@ def cluster_calls(
     try:
         import numpy as np
         from sklearn.cluster import HDBSCAN
-    except ImportError:
+    except ImportError as e:
+        # embeddings.embed() above already succeeded, so numpy exists — this
+        # branch is really "sklearn is missing", which is an environment
+        # problem, not a designed degradation path the way the lexical
+        # fallback in embeddings.py is. Loud for the same reason that one is:
+        # a silent all-noise result looks identical to "this corpus has no
+        # clusterable structure" unless something says otherwise.
+        logging.getLogger(__name__).warning(
+            "Clustering unavailable (%s) — every call will report as noise (-1)", e
+        )
         return ClusterResult(labels=[-1] * len(texts), names={}, noise_ratio=1.0)
 
     matrix = np.array(vectors, dtype=float)
