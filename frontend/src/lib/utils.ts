@@ -58,7 +58,7 @@ export function formatDate(iso: string): string {
 
 /** Shared colour ramp for the 0-100 needs-attention score. */
 export function attentionTone(score: number | null): string {
-  if (score === null) return "border-neutral-300 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400";
+  if (score === null) return "border-slate-300 text-slate-500 dark:border-slate-700 dark:text-slate-400";
   if (score >= 75) return "border-red-500/60 text-red-600 bg-red-500/10 dark:text-red-400";
   if (score >= 50) return "border-amber-500/60 text-amber-600 bg-amber-500/10 dark:text-amber-400";
   return "border-emerald-500/60 text-emerald-600 bg-emerald-500/10 dark:text-emerald-400";

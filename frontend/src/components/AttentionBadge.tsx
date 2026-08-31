@@ -17,7 +17,7 @@ interface Props {
  */
 export default function AttentionBadge({ score, factors = [] }: Props) {
   return (
-    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-baseline gap-3">
         <span
           className={cn(
@@ -27,7 +27,7 @@ export default function AttentionBadge({ score, factors = [] }: Props) {
         >
           {score ?? "—"}
         </span>
-        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           needs-attention score
         </span>
       </div>
@@ -37,7 +37,7 @@ export default function AttentionBadge({ score, factors = [] }: Props) {
           {factors.map((f) => (
             <li key={f.factor} className="text-sm">
               <div className="flex items-center gap-2">
-                <span className="w-10 shrink-0 font-mono text-xs tabular-nums text-neutral-400">
+                <span className="w-10 shrink-0 font-mono text-xs tabular-nums text-slate-400">
                   {(f.weight * 100).toFixed(0)}%
                 </span>
                 <span className="flex-1">{f.factor}</span>

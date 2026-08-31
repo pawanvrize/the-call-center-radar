@@ -14,12 +14,24 @@ export default async function AttentionDashboard({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Needs a manager&apos;s attention</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Ranked by the computed 0-100 score. Every call opens to the citation
-          behind its ranking.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Needs a manager&apos;s attention</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Ranked by the computed 0-100 score. Every call opens to the citation
+            behind its ranking.
+          </p>
+        </div>
+        {data?.evidence_coverage_pct !== null && data?.evidence_coverage_pct !== undefined && (
+          <div className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-right shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <p className="font-mono text-xl font-semibold tabular-nums">
+              {data.evidence_coverage_pct}%
+            </p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              evidence coverage
+            </p>
+          </div>
+        )}
       </div>
 
       {error && <ApiNotice error={error} />}
@@ -29,7 +41,7 @@ export default async function AttentionDashboard({
           a judge asking for a specific one doesn't need a hand-typed URL. */}
       {data && data.available_dates.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs uppercase tracking-wide text-neutral-500">
+          <span className="text-xs uppercase tracking-wide text-slate-500">
             Day
           </span>
           {data.available_dates.map((day) => {
@@ -41,12 +53,12 @@ export default async function AttentionDashboard({
                 className={cn(
                   "rounded-md border px-3 py-1 font-mono text-xs tabular-nums transition",
                   active
-                    ? "border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                    : "border-neutral-200 text-neutral-500 hover:border-indigo-400 dark:border-neutral-800",
+                    ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                    : "border-slate-200 text-slate-500 hover:border-blue-400 dark:border-slate-800",
                 )}
               >
                 {day.date}
-                <span className="ml-2 text-neutral-400">{day.call_count}</span>
+                <span className="ml-2 text-slate-400">{day.call_count}</span>
               </Link>
             );
           })}
@@ -54,7 +66,7 @@ export default async function AttentionDashboard({
       )}
 
       {data && data.calls.length === 0 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-slate-500">
           No calls{data.date ? ` for ${data.date}` : ""}.
         </p>
       )}
@@ -65,7 +77,7 @@ export default async function AttentionDashboard({
             <li key={call.id}>
               <Link
                 href={`/calls/${encodeURIComponent(call.id)}`}
-                className="flex items-start gap-4 rounded-lg border border-neutral-200 p-4 transition hover:border-indigo-400 dark:border-neutral-800"
+                className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
               >
                 <span
                   className={cn(
@@ -79,10 +91,10 @@ export default async function AttentionDashboard({
                   <p className="font-medium">
                     {call.intent_label ?? "Intent not analysed"}
                   </p>
-                  <p className="mt-0.5 line-clamp-2 text-sm text-neutral-500">
+                  <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">
                     {call.summary ?? "No summary stored."}
                   </p>
-                  <p className="mt-1 font-mono text-xs text-neutral-400">
+                  <p className="mt-1 font-mono text-xs text-slate-400">
                     {formatDateTime(call.started_at)} ·{" "}
                     {formatSeconds(call.duration_seconds)} ·{" "}
                     {call.resolution_status ?? "unknown"}

@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS evidence (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     call_id       TEXT NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
     claim_type    TEXT NOT NULL,      -- "intent" | "resolution" | "mood_shift" | "attention_factor"
+                                      -- | "resolution_contradiction_agent" | "resolution_contradiction_customer"
     claim_text    TEXT NOT NULL,      -- the claim this evidence is meant to support
     turn_id       INTEGER REFERENCES turns(id),
     timestamp     TEXT NOT NULL,      -- "HH:MM:SS"

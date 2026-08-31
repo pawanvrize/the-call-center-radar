@@ -90,15 +90,15 @@ export default function IngestForm() {
         className={cn(
           "flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 transition",
           dragging
-            ? "border-indigo-500 bg-indigo-500/5"
-            : "border-neutral-300 hover:border-indigo-400 dark:border-neutral-700",
+            ? "border-blue-500 bg-blue-500/5"
+            : "border-slate-300 hover:border-blue-400 dark:border-slate-700",
         )}
       >
-        <Upload size={22} className="text-neutral-400" />
+        <Upload size={22} className="text-slate-400" />
         {file ? (
           <>
             <span className="font-medium">{file.name}</span>
-            <span className="font-mono text-xs text-neutral-500">
+            <span className="font-mono text-xs text-slate-500">
               {(file.size / 1024 / 1024).toFixed(1)} MB
             </span>
           </>
@@ -107,7 +107,7 @@ export default function IngestForm() {
             <span className="text-sm font-medium">
               Drop a recording here, or click to choose
             </span>
-            <span className="text-xs text-neutral-500">
+            <span className="text-xs text-slate-500">
               Stereo audio — left channel agent, right channel customer
             </span>
           </>
@@ -124,25 +124,25 @@ export default function IngestForm() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
-          <span className="text-xs uppercase tracking-wide text-neutral-500">
+          <span className="text-xs uppercase tracking-wide text-slate-500">
             Customer name
           </span>
           <input
             value={customer}
             onChange={(e) => setCustomer(e.target.value)}
             placeholder="Mary Smith"
-            className="mt-1 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-neutral-800"
+            className="mt-1 w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-800"
           />
         </label>
         <label className="block">
-          <span className="text-xs uppercase tracking-wide text-neutral-500">
+          <span className="text-xs uppercase tracking-wide text-slate-500">
             Agent name
           </span>
           <input
             value={agent}
             onChange={(e) => setAgent(e.target.value)}
             placeholder="Robert"
-            className="mt-1 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-neutral-800"
+            className="mt-1 w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-800"
           />
         </label>
       </div>
@@ -150,25 +150,25 @@ export default function IngestForm() {
       <button
         type="submit"
         disabled={!file || busy}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {busy ? <Loader2 size={16} className="animate-spin" /> : <Radar size={16} />}
         {busy ? "Analysing…" : "Run the pipeline"}
       </button>
 
       {busy && (
-        <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p className="flex items-center gap-2 text-sm">
-            <Loader2 size={14} className="animate-spin text-indigo-500" />
+            <Loader2 size={14} className="animate-spin text-blue-500" />
             {STAGES[stage]}
           </p>
-          <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+          <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
             <div
               style={{ width: `${((stage + 1) / STAGES.length) * 100}%` }}
-              className="h-full rounded-full bg-indigo-500 transition-all duration-700"
+              className="h-full rounded-full bg-blue-500 transition-all duration-700"
             />
           </div>
-          <p className="mt-2 text-xs text-neutral-400">
+          <p className="mt-2 text-xs text-slate-400">
             Estimated stage — the API runs this as one synchronous call, so this
             is elapsed time rather than live progress.
           </p>
@@ -180,7 +180,7 @@ export default function IngestForm() {
           <p className="font-medium text-red-700 dark:text-red-400">
             Ingestion failed
           </p>
-          <p className="mt-1 text-neutral-600 dark:text-neutral-400">{error}</p>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">{error}</p>
         </div>
       )}
     </form>

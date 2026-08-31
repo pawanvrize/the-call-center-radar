@@ -10,7 +10,14 @@ import json
 from fastapi import APIRouter, HTTPException
 
 from app.db.session import DbConn
-from app.schemas.call import AttentionFactor, CallDetail, Evidence, Turn, Word
+from app.schemas.call import (
+    AttentionFactor,
+    CallDetail,
+    Evidence,
+    ResolutionContradiction,
+    Turn,
+    Word,
+)
 
 router = APIRouter()
 
@@ -83,6 +90,24 @@ def get_call(call_id: str, conn: DbConn):
     ev = _evidence_by_type(conn, call_id)
     first = lambda kind: (ev.get(kind) or [None])[0]  # noqa: E731
 
+    resolution_contradiction = None
+    agent_ev, customer_ev = first("resolution_contradiction_agent"), first(
+        "resolution_contradiction_customer"
+    )
+    if agent_ev and customer_ev:
+        resolution_contradiction = ResolutionContradiction(
+            agent_evidence=agent_ev, customer_evidence=customer_ev
+        )
+
+    coverage_row = conn.execute(
+        "SELECT AVG(verified) AS coverage FROM evidence WHERE call_id = ?", (call_id,)
+    ).fetchone()
+    evidence_coverage = (
+        round(coverage_row["coverage"] * 100, 1)
+        if coverage_row and coverage_row["coverage"] is not None
+        else None
+    )
+
     factors = []
     for f in json.loads(call["attention_factors_json"] or "[]"):
         factors.append(
@@ -115,4 +140,6 @@ def get_call(call_id: str, conn: DbConn):
         mood_shift_evidence=first("mood_shift"),
         attention_score=call["attention_score"],
         attention_factors=factors,
+        resolution_contradiction=resolution_contradiction,
+        evidence_coverage=evidence_coverage,
     )

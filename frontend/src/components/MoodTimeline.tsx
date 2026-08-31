@@ -38,7 +38,7 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
 
   if (points.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-300 p-6 text-sm text-neutral-500 dark:border-neutral-700">
+      <div className="rounded-lg border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700">
         No mood series yet — the scoring stage of the pipeline hasn&apos;t run
         for this call.
       </div>
@@ -48,8 +48,8 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
   const shiftPoint = points.find((p) => p.turnId === shiftTurnId);
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
         Customer mood
       </h3>
       <ResponsiveContainer width="100%" height={160}>
@@ -63,7 +63,7 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
             if (point) seekTo(point.seconds);
           }}
         >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
+          <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
           <XAxis
             dataKey="seconds"
             type="number"
@@ -71,21 +71,21 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
             tickFormatter={formatSeconds}
             tick={{ fontSize: 11 }}
             stroke="currentColor"
-            className="text-neutral-400"
+            className="text-slate-400"
           />
           <YAxis
             domain={[-1, 1]}
             ticks={[-1, 0, 1]}
             tick={{ fontSize: 11 }}
             stroke="currentColor"
-            className="text-neutral-400"
+            className="text-slate-400"
           />
           <Tooltip
             labelFormatter={(v) => formatSeconds(Number(v))}
             formatter={(value) => [Number(value).toFixed(2), "mood"]}
             contentStyle={{ fontSize: 12, borderRadius: 6 }}
           />
-          <ReferenceLine y={0} className="stroke-neutral-300 dark:stroke-neutral-700" />
+          <ReferenceLine y={0} className="stroke-slate-300 dark:stroke-slate-700" />
           {shiftPoint && (
             <ReferenceLine
               x={shiftPoint.seconds}
@@ -105,7 +105,7 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
           />
         </LineChart>
       </ResponsiveContainer>
-      <p className="mt-1 text-xs text-neutral-400">
+      <p className="mt-1 text-xs text-slate-400">
         Click the chart to seek the recording.
       </p>
     </div>

@@ -33,6 +33,14 @@ export interface AttentionFactor {
   evidence: Evidence | null;
 }
 
+/** Resolution Reality Check: the agent's claim vs the customer's own later
+ *  words. Rule-based (backend/app/pipeline/reality_check.py), not an LLM
+ *  judgment — present only when both sides were actually found. */
+export interface ResolutionContradiction {
+  agent_evidence: Evidence;
+  customer_evidence: Evidence;
+}
+
 export interface CallDetail {
   id: string;
   customer_id: string;
@@ -59,6 +67,12 @@ export interface CallDetail {
 
   attention_score: number | null; // 0-100
   attention_factors: AttentionFactor[];
+
+  resolution_contradiction: ResolutionContradiction | null;
+
+  /** % of this call's evidence rows that passed verification. Null when not
+   *  yet analysed. */
+  evidence_coverage: number | null;
 }
 
 export interface CallSummary {
@@ -151,4 +165,6 @@ export interface AttentionResponse {
   date: string | null;
   available_dates: AttentionDay[];
   calls: CallSummary[];
+  /** % of every evidence row ever stored, corpus-wide, that passed verification. */
+  evidence_coverage_pct: number | null;
 }

@@ -48,7 +48,7 @@ function CoachingCallout({ agents }: { agents: AgentStats[] }) {
               >
                 {a.name}
               </Link>{" "}
-              <span className="font-mono text-xs text-neutral-500">
+              <span className="font-mono text-xs text-slate-500">
                 resolves {(a.resolution_rate * 100).toFixed(0)}% overall but only{" "}
                 <span className="text-red-600 dark:text-red-400">
                   {(w.resolution_rate * 100).toFixed(0)}%
@@ -71,7 +71,7 @@ export default async function AgentsDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Agents</h1>
-        <p className="mt-1 max-w-3xl text-sm text-neutral-500">
+        <p className="mt-1 max-w-3xl text-sm text-slate-500">
           Volume, handle time and outcomes — plus the issue each agent handles
           worst relative to their own baseline, which is where the coachable
           differences actually show up.
@@ -84,9 +84,9 @@ export default async function AgentsDashboard() {
         <>
           <CoachingCallout agents={agents} />
 
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <table className="w-full text-sm">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
+              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Agent</th>
                   <th className="px-4 py-2.5 font-medium">Calls</th>
@@ -100,12 +100,12 @@ export default async function AgentsDashboard() {
                 {agents.map((a) => (
                   <tr
                     key={a.id}
-                    className="border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 dark:border-neutral-900 dark:hover:bg-neutral-900/50"
+                    className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50 dark:border-slate-900 dark:hover:bg-slate-900/50"
                   >
                     <td className="px-4 py-2.5">
                       <Link
                         href={`/agents/${encodeURIComponent(a.id)}`}
-                        className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                        className="font-medium text-blue-600 hover:underline dark:text-blue-400"
                       >
                         {a.name}
                       </Link>
@@ -135,7 +135,7 @@ export default async function AgentsDashboard() {
                           {(a.weakest_issue.delta_vs_self * 100).toFixed(0)}pp)
                         </span>
                       ) : (
-                        <span className="text-xs text-neutral-400">
+                        <span className="text-xs text-slate-400">
                           consistent across issues
                         </span>
                       )}
@@ -146,7 +146,7 @@ export default async function AgentsDashboard() {
             </table>
           </div>
 
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-slate-400">
             &ldquo;Weakest issue&rdquo; compares an agent against their own
             overall resolution rate, not against other agents, and only counts
             issues with at least 8 calls. Aggregate rates span just 88-95% here,

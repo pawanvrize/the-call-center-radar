@@ -10,7 +10,7 @@ export default async function CustomerList() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Customers</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-slate-500">
           Every caller in the dataset. Click a name for their full call history.
         </p>
       </div>

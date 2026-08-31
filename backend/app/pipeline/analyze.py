@@ -17,7 +17,7 @@ import sqlite3
 from dataclasses import dataclass, field
 
 from app.config import settings
-from app.pipeline import attention_score, changepoint, mood, reasoning, verifier
+from app.pipeline import attention_score, changepoint, mood, reality_check, reasoning, verifier
 from app.pipeline.turns import Turn
 
 
@@ -353,6 +353,33 @@ def prepare_analysis(
             evidence.append(row)
         mood_shift_db_id = stored[shift.turn_index].db_id
 
+    # --- Resolution Reality Check ------------------------------------------
+    # Deterministic, no LLM: does the customer's own later turn back up
+    # "resolved", or contradict it? Claim texts are worded to share vocabulary
+    # with the quotes they're expected to cite ("resolved", "problem", "still
+    # happening"), the same trick that fixed the resolution claim above, so
+    # the entailment check has a fair shot at genuine hits rather than
+    # rejecting them on vocabulary mismatch alone.
+    contradiction = None
+    contradiction_customer_row = None
+    if result.resolution.label == "resolved":
+        contradiction = reality_check.find_contradiction(stored)
+    if contradiction is not None:
+        agent_row = _build_evidence(
+            "resolution_contradiction_agent",
+            "the agent confirmed the customer's issue was resolved and everything should now work",
+            stored, contradiction.agent_turn_index,
+        )
+        if agent_row:
+            evidence.append(agent_row)
+        contradiction_customer_row = _build_evidence(
+            "resolution_contradiction_customer",
+            "the customer says the problem is still happening and was not actually fixed",
+            stored, contradiction.customer_turn_index,
+        )
+        if contradiction_customer_row:
+            evidence.append(contradiction_customer_row)
+
     # --- Attention score --------------------------------------------------
     # Counted here rather than earlier because it needs the intent the model
     # just returned.
@@ -372,6 +399,29 @@ def prepare_analysis(
         mood_shift_turn_index=shift.turn_index if shift else None,
         intent_turn_index=result.intent.turn_index,
     )
+
+    # A direct customer contradiction is the strongest signal this system can
+    # find — stronger than "resolved" alone, which is why it gets its own
+    # factor rather than folding into the resolution weight above. Appended
+    # post-hoc rather than threaded through compute_attention_score() so that
+    # well-calibrated, already-tested scoring function stays untouched; this
+    # bonus is a layer on top of it, not a change to it.
+    if contradiction_customer_row is not None:
+        bonus_weight = 0.20
+        attention.factors.append(
+            attention_score.AttentionFactor(
+                factor="customer's later words contradict the agent's \"resolved\" claim",
+                weight=bonus_weight,
+                turn_index=contradiction.customer_turn_index,
+                detail="resolution reality check",
+                # Already support-checked above as its own claim type; citing
+                # it again here means "here is where that already-verified
+                # contradiction lives", not a fresh assertion to re-check.
+                check_support=False,
+            )
+        )
+        attention.score = min(100, attention.score + round(bonus_weight * 100))
+        attention.factors.sort(key=lambda f: f.weight, reverse=True)
 
     # Citations built above (intent, resolution, mood shift) are reused here
     # rather than rebuilt: the "issue unresolved" factor and the resolution
@@ -544,6 +594,30 @@ def recompute_attention(conn: sqlite3.Connection, median_handle_time: float) -> 
             mood_shift_turn_index=shift.turn_index if shift else None,
             intent_turn_index=intent_turn_index,
         )
+
+        # A resolution-contradiction citation, if one exists, was stored by
+        # prepare_analysis and is never deleted here (only 'attention_factor'
+        # and 'mood_shift' rows are, below) — but the bonus FACTOR it earns is
+        # part of attention_factors_json, which IS fully rebuilt every
+        # recompute. Without re-deriving it here, a routine rescore (e.g.
+        # after clustering) would silently drop the contradiction's score
+        # contribution even though its evidence is still sitting in the table.
+        contradiction_turn_index = _cited_turn_index(
+            conn, call_id, "resolution_contradiction_customer", stored
+        )
+        if contradiction_turn_index is not None:
+            bonus_weight = 0.20
+            attention.factors.append(
+                attention_score.AttentionFactor(
+                    factor="customer's later words contradict the agent's \"resolved\" claim",
+                    weight=bonus_weight,
+                    turn_index=contradiction_turn_index,
+                    detail="resolution reality check",
+                    check_support=False,
+                )
+            )
+            attention.score = min(100, attention.score + round(bonus_weight * 100))
+            attention.factors.sort(key=lambda f: f.weight, reverse=True)
 
         # The shift just recomputed above supersedes whatever an earlier run
         # stored on `calls.mood_shift_turn_id` — rebuild that citation to match,

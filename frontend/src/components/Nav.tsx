@@ -18,15 +18,15 @@ export default function Nav() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/80 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/80">
+    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
       <nav className="mx-auto flex max-w-6xl items-center gap-1 px-6 py-3">
         <Link href="/" className="mr-6 flex items-center gap-2 font-semibold">
-          <Radar size={18} className="text-indigo-500" />
+          <Radar size={18} className="text-blue-500" />
           Call-Centre Radar
         </Link>
         {LINKS.map(({ href, label, icon: Icon }) => {
           const active =
-            href === "/" ? pathname === "/" : pathname.startsWith(href);
+            href === "/" ? pathname === "/" : (pathname ?? "").startsWith(href);
           return (
             <Link
               key={href}
@@ -34,8 +34,8 @@ export default function Nav() {
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition",
                 active
-                  ? "bg-indigo-500/10 font-medium text-indigo-600 dark:text-indigo-400"
-                  : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900",
+                  ? "bg-blue-500/10 font-medium text-blue-600 dark:text-blue-400"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900",
               )}
             >
               <Icon size={15} />

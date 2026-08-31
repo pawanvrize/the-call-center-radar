@@ -9,6 +9,7 @@ import TranscriptPanel from "./TranscriptPanel";
 import MoodTimeline from "./MoodTimeline";
 import AttentionBadge from "./AttentionBadge";
 import EvidenceChip from "./EvidenceChip";
+import ResolutionRealityCheck from "./ResolutionRealityCheck";
 
 const RESOLUTION_TONE: Record<string, string> = {
   resolved: "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
@@ -28,7 +29,7 @@ function Claim({
 }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
       <div>{value}</div>
@@ -44,18 +45,20 @@ export default function CallView({ call }: { call: CallDetail }) {
         <div>
           <Link
             href={`/customers/${encodeURIComponent(call.customer_id)}`}
-            className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
           >
             ← {call.customer_name}
           </Link>
           <h1 className="mt-1 text-2xl font-semibold">Call {call.id}</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-slate-500">
             {formatDateTime(call.started_at)} · {formatSeconds(call.duration_seconds)} ·
             agent {call.agent_name} · transcript via {call.transcript_provider}
           </p>
         </div>
 
         <WaveformPlayer audioUrl={call.audio_url} />
+
+        <ResolutionRealityCheck contradiction={call.resolution_contradiction} />
 
         <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
           <div className="space-y-6">
@@ -64,13 +67,13 @@ export default function CallView({ call }: { call: CallDetail }) {
           </div>
 
           <aside className="space-y-6">
-            <div className="space-y-5 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <Claim
                 label="Intent"
                 value={
                   <p className="text-sm">
                     {call.intent_label ?? (
-                      <span className="text-neutral-400">not analysed</span>
+                      <span className="text-slate-400">not analysed</span>
                     )}
                   </p>
                 }
@@ -91,7 +94,7 @@ export default function CallView({ call }: { call: CallDetail }) {
                       {call.resolution_status}
                     </span>
                   ) : (
-                    <span className="text-sm text-neutral-400">not analysed</span>
+                    <span className="text-sm text-slate-400">not analysed</span>
                   )
                 }
               >
@@ -105,7 +108,7 @@ export default function CallView({ call }: { call: CallDetail }) {
                     {call.mood_shift_turn_id !== null ? (
                       `Detected at turn ${call.mood_shift_turn_id}`
                     ) : (
-                      <span className="text-neutral-400">no shift detected</span>
+                      <span className="text-slate-400">no shift detected</span>
                     )}
                   </p>
                 }
@@ -114,12 +117,12 @@ export default function CallView({ call }: { call: CallDetail }) {
               </Claim>
 
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Summary
                 </p>
                 <p className="text-sm leading-relaxed">
                   {call.summary ?? (
-                    <span className="text-neutral-400">not analysed</span>
+                    <span className="text-slate-400">not analysed</span>
                   )}
                 </p>
               </div>
@@ -129,6 +132,17 @@ export default function CallView({ call }: { call: CallDetail }) {
               score={call.attention_score}
               factors={call.attention_factors}
             />
+
+            {call.evidence_coverage !== null && (
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Evidence coverage
+                </span>
+                <span className="font-mono text-sm font-semibold tabular-nums">
+                  {call.evidence_coverage}%
+                </span>
+              </div>
+            )}
           </aside>
         </div>
       </div>

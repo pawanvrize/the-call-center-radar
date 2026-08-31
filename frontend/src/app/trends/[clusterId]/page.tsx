@@ -27,7 +27,7 @@ export default async function ClusterCalls({
       <div>
         <Link
           href="/trends"
-          className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
         >
           ← All issues
         </Link>
@@ -35,7 +35,7 @@ export default async function ClusterCalls({
           {issue?.label ?? `Cluster ${clusterId}`}
         </h1>
         {issue && (
-          <p className="mt-1 font-mono text-sm text-neutral-500">
+          <p className="mt-1 font-mono text-sm text-slate-500">
             {issue.call_count} calls ·{" "}
             {(issue.resolution_rate * 100).toFixed(0)}% resolved · attention{" "}
             {issue.avg_attention_score.toFixed(1)} ·{" "}
@@ -52,7 +52,7 @@ export default async function ClusterCalls({
             <li key={call.id}>
               <Link
                 href={`/calls/${encodeURIComponent(call.id)}`}
-                className="flex items-start gap-4 rounded-lg border border-neutral-200 p-4 transition hover:border-indigo-400 dark:border-neutral-800"
+                className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
               >
                 <span
                   className={cn(
@@ -66,10 +66,10 @@ export default async function ClusterCalls({
                   <p className="font-medium">
                     {call.intent_label ?? "Intent not analysed"}
                   </p>
-                  <p className="mt-0.5 line-clamp-2 text-sm text-neutral-500">
+                  <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">
                     {call.summary ?? "No summary stored."}
                   </p>
-                  <p className="mt-1 font-mono text-xs text-neutral-400">
+                  <p className="mt-1 font-mono text-xs text-slate-400">
                     {formatDateTime(call.started_at)} ·{" "}
                     {formatSeconds(call.duration_seconds)} ·{" "}
                     {call.resolution_status ?? "unknown"}

@@ -37,6 +37,15 @@ class AttentionFactor(BaseModel):
     evidence: Evidence | None = None
 
 
+class ResolutionContradiction(BaseModel):
+    """Resolution Reality Check: the agent's claim and the customer's own
+    later words, side by side. Present only when both were found — a rule-
+    based check (pipeline/reality_check.py), not an LLM judgment, so no
+    partial/uncertain state exists to represent."""
+    agent_evidence: Evidence
+    customer_evidence: Evidence
+
+
 class CallDetail(BaseModel):
     id: str
     customer_id: str
@@ -63,6 +72,14 @@ class CallDetail(BaseModel):
 
     attention_score: int | None  # 0-100
     attention_factors: list[AttentionFactor] = []
+
+    resolution_contradiction: ResolutionContradiction | None = None
+
+    #: % of this call's evidence rows that passed verification. None when the
+    #: call has no evidence yet (not analysed). Answers a different question
+    #: than the attention score: "how much of what the system told you about
+    #: THIS call can you actually trace back to the transcript?"
+    evidence_coverage: float | None = None
 
 
 class CallSummary(BaseModel):

@@ -65,6 +65,11 @@ Fuzzy-matching proves a quote exists. It does not prove the quote *justifies the
 **04 — Mood you can measure.**
 Mood is a scored time series, and the shift point is a change-point detection result — not an LLM's opinion. The chart on screen and the cited "why" are the same computation.
 
+**05 — Resolution Reality Check: the agent's word isn't the last word.**
+"Resolved" is an LLM judgment about the whole transcript; it can still be wrong the same way a human summarizer can be. So a second, fully rule-based pass (`pipeline/reality_check.py`) checks the thing that actually matters: does the customer's OWN later turn back up "resolved", or contradict it? No LLM call, no new failure mode — just a phrase match on the agent's claim ("you should be all set") and, strictly after it, one on the customer's pushback ("still not working", "same problem"). Both quotes still go through the same evidence verifier as every other citation. Measured on this corpus: 0/1,303 resolved calls trip it — same honest result as mood-shift and escalation, because these are scripted, polite calls with nothing to contradict. It's built to catch the case this corpus doesn't have, demo-able the same way the mood-shift detector is: feed it a call where the customer pushes back after the agent's claim, via `/ingest`.
+
+Alongside it, every call and the dashboard header now surface an **Evidence Coverage Score** — the % of that call's (or the whole corpus's) citations that actually passed verification, straight from `evidence.verified`. No new storage, no new pipeline stage: the number the eval harness already computes, put in front of the person using the product instead of buried in a test report.
+
 ---
 
 ## Architecture

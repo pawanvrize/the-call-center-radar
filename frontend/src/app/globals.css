@@ -1,8 +1,25 @@
 @import "tailwindcss";
 
+/* The theme is deliberately light-only. Every `dark:` class already sprinkled
+   through the components (from the original Next.js starter) would otherwise
+   follow the OS via prefers-color-scheme — and the card-elevation design this
+   pass builds on (shadow-sm + a one-shade-darker canvas) doesn't survive that:
+   box-shadows disappear against a near-black background, leaving cards and
+   canvas indistinguishable. Rather than design and tune a second, separate
+   dark palette under time pressure, redefine Tailwind's `dark:` variant to key
+   off a `.dark` class instead of system preference — since nothing ever adds
+   that class, every `dark:` utility in the codebase simply goes inert. The
+   classes stay in place, so wiring up a real toggle later is a small, additive
+   change rather than a rewrite. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Canvas vs. card: the body sits one shade back (slate-50) so the white cards
+   every page is built from (rounded-xl + shadow-sm containers) actually read
+   as elevated surfaces instead of blending into the page — the standard
+   fintech-dashboard "cards on a canvas" look. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc; /* slate-50 */
+  --foreground: #0f172a; /* slate-900 */
 }
 
 @theme inline {
@@ -10,13 +27,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

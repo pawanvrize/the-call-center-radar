@@ -13,7 +13,7 @@ export default function ApiNotice({ error }: { error: string }) {
         <p className="font-medium text-amber-700 dark:text-amber-400">
           No data from the API
         </p>
-        <p className="mt-1 font-mono text-xs text-neutral-500">{error}</p>
+        <p className="mt-1 font-mono text-xs text-slate-500">{error}</p>
       </div>
     </div>
   );

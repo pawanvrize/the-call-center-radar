@@ -16,7 +16,7 @@ export default function EvidenceChip({ evidence }: { evidence: Evidence | null }
 
   if (!evidence) {
     return (
-      <span className="inline-flex items-center gap-1 rounded border border-dashed border-neutral-300 px-2 py-0.5 font-mono text-xs text-neutral-400 dark:border-neutral-700">
+      <span className="inline-flex items-center gap-1 rounded border border-dashed border-slate-300 px-2 py-0.5 font-mono text-xs text-slate-400 dark:border-slate-700">
         no evidence
       </span>
     );
@@ -32,7 +32,7 @@ export default function EvidenceChip({ evidence }: { evidence: Evidence | null }
       className={
         "inline-flex max-w-full items-center gap-1.5 rounded border px-2 py-0.5 text-left font-mono text-xs transition hover:brightness-110 " +
         (verified
-          ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300"
+          ? "border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-300"
           : "border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400")
       }
     >

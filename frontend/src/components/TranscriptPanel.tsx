@@ -29,7 +29,7 @@ export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
 
   if (turns.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-300 p-6 text-sm text-neutral-500 dark:border-neutral-700">
+      <div className="rounded-lg border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700">
         No transcript stored for this call yet — run the ingestion pipeline.
       </div>
     );
@@ -38,7 +38,7 @@ export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
   return (
     <div
       ref={scrollRef}
-      className="max-h-[28rem] overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-800"
+      className="max-h-[28rem] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
       {turns.map((turn) => {
         const isActive = turn.id === activeId;
@@ -49,14 +49,14 @@ export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
             data-turn-id={turn.id}
             onClick={() => seekTo(turn.start_seconds)}
             className={cn(
-              "flex cursor-pointer gap-3 border-b border-neutral-100 px-4 py-2.5 text-sm transition last:border-b-0 dark:border-neutral-900",
+              "flex cursor-pointer gap-3 border-b border-slate-100 px-4 py-2.5 text-sm transition last:border-b-0 dark:border-slate-900",
               isActive
-                ? "bg-indigo-500/10"
-                : "hover:bg-neutral-50 dark:hover:bg-neutral-900/50",
+                ? "bg-blue-500/10"
+                : "hover:bg-slate-50 dark:hover:bg-slate-900/50",
               isShift && "border-l-2 border-l-amber-500",
             )}
           >
-            <span className="w-12 shrink-0 pt-0.5 font-mono text-xs tabular-nums text-neutral-400">
+            <span className="w-12 shrink-0 pt-0.5 font-mono text-xs tabular-nums text-slate-400">
               {formatSeconds(turn.start_seconds)}
             </span>
             <span
@@ -64,7 +64,7 @@ export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
                 "w-20 shrink-0 pt-0.5 text-xs font-medium uppercase tracking-wide",
                 turn.speaker === "customer"
                   ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-neutral-500",
+                  : "text-slate-500",
               )}
             >
               {turn.speaker}
@@ -72,7 +72,7 @@ export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
             <p className="min-w-0 flex-1">
               {turn.text}
               {turn.overlapping && (
-                <span className="ml-2 rounded bg-neutral-200 px-1 py-0.5 font-mono text-[10px] uppercase text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+                <span className="ml-2 rounded bg-slate-200 px-1 py-0.5 font-mono text-[10px] uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                   crosstalk
                 </span>
               )}

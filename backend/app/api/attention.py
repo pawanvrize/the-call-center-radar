@@ -19,6 +19,12 @@ class AttentionResponse(BaseModel):
     #: Every day the corpus actually covers, so the UI can offer them.
     available_dates: list[AttentionDay]
     calls: list[CallSummary]
+    #: % of every evidence row ever stored, corpus-wide, that passed
+    #: verification. The single number behind "how much of what this system
+    #: tells a manager can actually be traced back to a transcript" — the same
+    #: query the eval harness runs (see schema.sql's comment on `evidence`),
+    #: surfaced on the dashboard instead of buried in a test report.
+    evidence_coverage_pct: float | None
 
 
 def latest_call_date(conn) -> str | None:
@@ -45,9 +51,18 @@ def needs_attention(conn: DbConn, date: str | None = None, limit: int = 100):
         )
     ]
 
+    coverage_row = conn.execute("SELECT AVG(verified) AS coverage FROM evidence").fetchone()
+    coverage_pct = (
+        round(coverage_row["coverage"] * 100, 1)
+        if coverage_row and coverage_row["coverage"] is not None
+        else None
+    )
+
     day = date or latest_call_date(conn)
     if day is None:
-        return AttentionResponse(date=None, available_dates=days, calls=[])
+        return AttentionResponse(
+            date=None, available_dates=days, calls=[], evidence_coverage_pct=coverage_pct
+        )
 
     rows = conn.execute(
         """
@@ -67,4 +82,5 @@ def needs_attention(conn: DbConn, date: str | None = None, limit: int = 100):
         date=day,
         available_dates=days,
         calls=[CallSummary(**dict(r)) for r in rows],
+        evidence_coverage_pct=coverage_pct,
     )

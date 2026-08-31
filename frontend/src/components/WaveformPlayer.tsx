@@ -70,25 +70,25 @@ export default function WaveformPlayer({ audioUrl }: Props) {
 
   if (!audioUrl) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-300 p-6 text-sm text-neutral-500 dark:border-neutral-700">
+      <div className="rounded-lg border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700">
         No recording linked to this call.
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={() => wsRef.current?.playPause()}
           aria-label={playing ? "Pause" : "Play"}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white transition hover:bg-indigo-500"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-500"
         >
           {playing ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
         </button>
         <div ref={containerRef} className="min-w-0 flex-1" />
-        <span className="shrink-0 font-mono text-xs tabular-nums text-neutral-500">
+        <span className="shrink-0 font-mono text-xs tabular-nums text-slate-500">
           {formatSeconds(time)} / {formatSeconds(duration)}
         </span>
       </div>
