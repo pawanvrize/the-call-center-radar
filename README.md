@@ -9,8 +9,73 @@ turn by *number*, under an enforced JSON schema, and the exact words are looked
 up from our own transcript. Fabricated citations aren't detected after the fact
 — they're structurally impossible to express.
 
-See [RADAR_PLAYBOOK.md](RADAR_PLAYBOOK.md) for the architecture and the
-reasoning behind each choice.
+Two checks sit on top of that guarantee, both fully rule-based (no LLM, no new
+cost):
+
+- **Resolution Reality Check** — flags a call where the agent's own words claim
+  the issue is resolved but the customer's *later* words contradict it. A
+  regex match on both sides, run through the same evidence verifier as every
+  other citation.
+- **Evidence Coverage** — the % of a call's (or the whole corpus's) citations
+  that actually passed verification, shown per call and on the dashboard
+  header — "how much of what this system told you can you actually trace back
+  to the transcript," not just an attention number.
+
+See [RADAR_PLAYBOOK.md](RADAR_PLAYBOOK.md) for the reasoning behind each
+choice.
+
+---
+
+## Architecture
+
+Two entry points — the overnight batch and a live `POST /ingest` upload — run
+the **identical** pipeline function. Nothing about a demo call is a separate
+happy path.
+
+```mermaid
+flowchart TB
+    subgraph SRC["Raw data"]
+        AUDIO["audio/&lt;id&gt;.mp3<br/>stereo · 8kHz · L=agent R=customer"]
+        META["metadata/&lt;id&gt;.json<br/>customer · agent · timestamps"]
+    end
+
+    subgraph PIPE["Pipeline — backend/app/pipeline/"]
+        direction TB
+        SPLIT["split channels<br/>audio.py — ffmpeg"]
+        ASR["transcribe<br/>AssemblyAI multichannel /<br/>faster-whisper offline"]
+        MERGE["merge into turns<br/>turns.py"]
+        MOOD["score mood<br/>mood.py — VADER + prosody"]
+        SHIFT["detect mood shift<br/>changepoint.py — PELT"]
+        LLM["grounded reasoning<br/>reasoning.py<br/>intent · resolution · summary<br/>— cites a turn_id, never a quote"]
+        VERIFY["verify evidence<br/>verifier.py<br/>span check + entailment check"]
+        SCORE["score attention<br/>attention_score.py"]
+        REALITY["resolution reality check<br/>reality_check.py"]
+
+        SPLIT --> ASR --> MERGE --> MOOD --> SHIFT --> LLM --> VERIFY --> SCORE --> REALITY
+    end
+
+    CLUSTER["cluster issues<br/>clustering.py — HDBSCAN<br/>(batch, across all calls)"]
+
+    DB[("SQLite · WAL<br/>calls · turns · evidence<br/>customers · agents · clusters")]
+
+    subgraph SERVICES["docker compose"]
+        API["backend — FastAPI<br/>/calls /attention /customers<br/>/trends /agents /repeat-contacts<br/>/ingest /audio"]
+        WEB["frontend — Next.js<br/>customer history · call detail<br/>attention queue · trends · agents"]
+        OLLAMA["ollama — optional<br/>offline LLM fallback"]
+    end
+
+    AUDIO --> SPLIT
+    META --> MERGE
+    REALITY --> DB
+    REALITY --> CLUSTER --> DB
+    DB --> API
+    API <-->|"/api/* /audio/*<br/>rewritten, same-origin"| WEB
+    LLM -.->|"one of 4 interchangeable<br/>providers"| OLLAMA
+```
+
+Each stage's own module docstring in `backend/app/pipeline/` explains the
+*why* in full — thresholds, rejected alternatives, and what was actually
+measured on this corpus — not just the *what* shown here.
 
 ---
 
@@ -157,21 +222,25 @@ Reports the **citation pass rate** — what fraction of stored citations actuall
 occur in the cited turn *and* semantically support the claim — broken down by
 claim type, with rejection reasons. Fully automatic, no labelling required.
 
-Measured on the full corpus:
+Measured on the full corpus (1,441/1,441 calls analysed):
 
 | | |
 |---|---|
-| Calls analysed | 1,441 |
-| Citations | 3,059 |
-| **Intent citations verified** | **97.9%** |
-| Mood-shift citations verified | 85.9% |
-| Resolution citations verified | 81.1% |
-| **Overall** | **89.3%** |
+| Citations | 2,900 |
+| **Intent citations verified** | **98.1%** (1,414/1,441) |
+| Resolution citations verified | 81.7% (1,177/1,441) |
+| Attention-factor citations verified | 94.4% (17/18) |
+| **Overall** | **89.9%** (2,608/2,900) |
 
 "Verified" means the quote provably occurs in the cited turn **and**
 semantically supports the claim. The harness re-checks from scratch rather than
 trusting the stored flag, so the number can't drift from what the dashboard
-shows.
+shows — and the dashboard now surfaces this same figure directly, per call and
+corpus-wide, as **Evidence Coverage** (`GET /calls/{id}`, `GET /attention`).
+
+There is no mood-shift row in this table for the same reason there's no
+resolution-contradiction row: see *Known characteristics of this dataset*
+below — both are honestly 0 on this corpus, so there's nothing to cite.
 
 Word error rate also runs if you place hand-checked `{call_id}.txt` transcripts
 in `eval/gold_set/` and `pip install -r backend/requirements-ml.txt`.
@@ -204,7 +273,14 @@ docker compose run --rm --no-deps backend python -m pytest tests/ -q
 Worth knowing before reading the dashboard — several shaped the design:
 
 - **1,441 calls, 23.28 hours.** Mean call 58s. All stereo 8 kHz: left channel
-  agent, right channel customer, which is why no diarization is needed.
+  agent, right channel customer, which is why no diarization is needed — for
+  97.6% of the corpus. **35 of 1,441 recordings (2.4%) have the channels
+  genuinely swapped in the source audio.** Found by spot-checking, confirmed by
+  matching the agent's own scripted opening line against the channel labelled
+  "customer" at turn 0 specifically, and corrected by `scripts/fix_channel_swaps.py`.
+  The claim was never "channel identity is infallible" — it's "don't trust an
+  assumption further than you've verified it," the same principle behind every
+  other check in this system, applied one layer earlier.
 - **Only 4 distinct days** (2020-03-15, 05-30, 06-01, 06-02). "Attention today"
   therefore means *the most recent day that has calls*, not `DATE('now')`. And
   the Trends view ranks by volume and outcome rather than drawing a time series
@@ -215,9 +291,18 @@ Worth knowing before reading the dashboard — several shaped the design:
 - **The calls are scripted and polite.** The escalation lexicon fires on
   essentially none of them, so that attention factor rarely contributes and
   scores top out around 55 rather than 90.
-- **Mood shifts are reported conservatively.** Change-point detection runs on a
-  partly prosodic signal, so it fires on rhythm changes in speech with no
-  emotional content — a customer reading out an address. Where the shift turn is
-  too short to quote, the system reports *no shift* rather than a claim it
-  cannot evidence. That cut shift claims from 451 to 177 and took their
-  verification rate from 33% to 86%.
+- **Mood shifts are reported conservatively — and currently that means zero.**
+  Change-point detection runs on a partly prosodic signal, so an unfiltered
+  version fires on rhythm changes with no emotional content (a customer reading
+  out an address) as readily as real distress. After filtering to substantive,
+  citable turns and requiring a shift to land in genuinely negative territory,
+  the honest result on this corpus is **0 mood shifts across all 1,441 calls**
+  — these are scripted, uniformly polite transactional calls, and there is
+  close to no negative mood present to find (mean turn mood +0.05, σ 0.18
+  across 8,866 scored customer turns). The detector is real and stays in the
+  pipeline; demo it live via `/ingest` with a recording where the customer's
+  mood actually turns.
+- **Resolution contradictions are also 0/1,441** for the same reason — the
+  Resolution Reality Check regex was verified against synthetic positive and
+  negative transcripts to confirm it fires correctly; this corpus simply has
+  nothing for it to catch.
