@@ -51,8 +51,10 @@ All 1,441 files share this exact shape, so no defensive parsing is needed — bu
 
 ## Why this wins — four bets
 
-**01 — Free, perfect speaker attribution.**
-Left channel is the agent, right is the customer. We never diarize. Most teams will downmix to mono and fight an error-prone diarization model, then still have to guess which anonymous "Speaker A" is the agent. We get 100% correct attribution by construction, for free.
+**01 — Free speaker attribution, validated rather than blindly trusted.**
+Left channel is the agent, right is the customer. We never diarize. Most teams will downmix to mono and fight an error-prone diarization model, then still have to guess which anonymous "Speaker A" is the agent.
+
+That convention held for 97.6% of the corpus for free, by construction. It didn't hold for the other 2.4%: 35 of 1,441 recordings genuinely have the channels swapped in the source audio — caught because the agent's own scripted opening line ("Hello, this is Harper Valley National Bank...") showed up on the channel we'd labelled customer. A pipeline that trusts channel identity unconditionally would have shipped every one of those 35 with agent and customer's entire conversation reversed — wrong intent, wrong resolution, wrong everything downstream, with no error anywhere to catch it. `scripts/fix_channel_swaps.py` detects the swap against the one thing that's actually deterministic in this corpus (the agent's script), corrects it, and re-derives everything from the corrected transcript. The claim isn't "channel identity is infallible" — it's "we don't trust an assumption further than we can verify it," which is the same principle behind every other differentiator here, applied one layer earlier.
 
 **02 — Hallucinated citations are structurally impossible.**
 The LLM is never allowed to write a quote. It returns a `turn_id` under a strict JSON schema; *we* look up the verbatim text from our own database. This is stronger than checking quotes after the fact — there is nothing to check, because the model never authored the text.
