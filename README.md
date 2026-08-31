@@ -79,6 +79,58 @@ measured on this corpus — not just the *what* shown here.
 
 ---
 
+## Screenshots
+
+<table>
+<tr>
+<td width="50%">
+
+**Overview** — the admin home page. A stated verdict before any number, stat
+cards colored by the same thresholds as everywhere else, previews of
+attention/trends/agents that each open to their full page.
+
+<img src="docs/screenshots/overview.png" alt="Overview dashboard" width="100%">
+
+</td>
+<td width="50%">
+
+**Call detail** — the signature interaction. Every judgment (intent,
+resolution, mood shift) sits next to the exact quote and timestamp it came
+from; clicking one seeks the waveform to that second.
+
+<img src="docs/screenshots/call-detail.png" alt="Call detail with evidence chips" width="100%">
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Trends** — issue clusters discovered from the call summaries themselves,
+against the corpus baseline. Underperforming issues are flagged above the
+list rather than buried in it.
+
+<img src="docs/screenshots/trends.png" alt="Trending issues" width="100%">
+
+</td>
+<td width="50%">
+
+**Agents** — volume, handle time, and outcomes, plus each agent's weakest
+issue relative to their *own* baseline — the coaching signal, not a raw
+ranking.
+
+<img src="docs/screenshots/agents.png" alt="Agent performance" width="100%">
+
+</td>
+</tr>
+</table>
+
+**Live ingestion** — the same pipeline that ran the batch, on a recording
+nobody has seen:
+
+<img src="docs/screenshots/ingest.png" alt="Analyse a new call" width="70%">
+
+---
+
 ## Quickstart
 
 **The analysed database ships with this repo.** `data/radar.db` contains all
