@@ -6,7 +6,7 @@ The brief has a trap door built in: *"a claim with no evidence scores zero; evid
 
 > **Revision note.** This document was rewritten after measuring the actual dataset. The first draft assumed ~120 hours of audio and a flat metadata schema; both were wrong, and several decisions downstream of them changed. Everything marked **measured** below was verified directly against the files in `data/`.
 >
-> **Second revision note.** The sections below marked *(as built)* were updated once more, after the system was actually finished, to match what shipped rather than what was planned — three things changed in the build that this document originally didn't anticipate: reasoning gained three fallback providers beyond Groq (`bedrock`/`azure`/`ollama`), clustering ended up as HDBSCAN + c-TF-IDF naming rather than BERTopic/FASTopic (noise stayed under the 30% threshold that would have forced the switch), and two new rule-based checks were added on top of the verifier — a **Resolution Reality Check** and a per-call **Evidence Coverage Score** (see bet 05 below). Everything else — the corpus measurements, the rejected alternatives, the demo script — held up and is unchanged.
+> **Second revision note.** The sections below marked *(as built)* were updated once more, after the system was actually finished, to match what shipped rather than what was planned — three things changed in the build that this document originally didn't anticipate: reasoning gained three fallback providers beyond Groq (`bedrock`/`azure`/`ollama`), clustering ended up as HDBSCAN + c-TF-IDF naming rather than BERTopic/FASTopic (noise stayed under the 30% threshold that would have forced the switch), and two new rule-based checks were added on top of the verifier — a **Resolution Reality Check** and a per-call **Evidence Coverage Score** (see bet 05 below). Everything else — the corpus measurements and the rejected alternatives — held up and is unchanged.
 
 ---
 
@@ -283,17 +283,6 @@ Report the rejection rate honestly — it's a real number either way, and "we re
 | Verifier rejects too many claims | Loosen the threshold slightly and **report the rate** — it's evidence of rigour, not failure |
 | Clustering produces mostly noise | Switch BERTopic → FASTopic; failing that, cluster intent labels instead of summaries |
 | Docker OOM on the LLM | 8 GB allocated of 15.7 GB host — raise via `.wslconfig`, or stay on the 8B-class model |
-
----
-
-## Demo script
-
-1. **Open with the rule.** Put the brief's own sentence on screen — *"a claim with no evidence scores zero"* — then show every card already carrying a clickable citation.
-2. **The channel-split insight in one breath.** Left is the agent, right is the customer. No diarization to get wrong.
-3. **Then the sharper version.** Our model never writes quotes — it returns a turn number, and we look up the words. Hallucinated citations aren't caught; they're impossible.
-4. **Take a judge's chosen call.** Click the mood shift, hear the exact seconds that caused it.
-5. **Feed it a recording nobody has seen.** `/ingest`, live.
-6. **Close on the numbers.** WER and citation pass rate from the eval harness.
 
 ---
 

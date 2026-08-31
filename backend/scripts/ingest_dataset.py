@@ -13,19 +13,19 @@ Usage:
     python scripts/ingest_dataset.py --call-id <sid>     # one specific call
 """
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import settings                                    # noqa: E402
-from app.db.session import get_connection, init_db                 # noqa: E402
-from app.db import store                                           # noqa: E402
-from app.pipeline import run_batch                                 # noqa: E402
-from app.pipeline.metadata import iter_metadata, parse_metadata    # noqa: E402
-from app.pipeline.transcribe import get_transcriber                # noqa: E402
+from app.config import settings
+from app.db import store
+from app.db.session import get_connection, init_db
+from app.pipeline import run_batch
+from app.pipeline.metadata import iter_metadata, parse_metadata
+from app.pipeline.transcribe import get_transcriber
 
 
 def main() -> int:

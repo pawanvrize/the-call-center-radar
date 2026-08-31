@@ -15,10 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import settings                                   # noqa: E402
-from app.db.session import get_connection                         # noqa: E402
-from app.pipeline import reasoning, verifier                       # noqa: E402
-from app.pipeline.analyze import load_turns, timestamp             # noqa: E402
+from app.config import settings
+from app.db.session import get_connection
+from app.pipeline import reasoning, verifier
+from app.pipeline.analyze import load_turns
 
 
 def score_call(call_id: str, model: str) -> dict | None:

@@ -26,8 +26,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.db.session import get_connection      # noqa: E402
-from app.pipeline import verifier              # noqa: E402
+from app.db.session import get_connection
+from app.pipeline import verifier
 
 
 def citation_report(conn) -> None:

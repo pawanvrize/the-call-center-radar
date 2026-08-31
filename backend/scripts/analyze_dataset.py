@@ -21,10 +21,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.db.session import get_connection, init_db                       # noqa: E402
-from app.pipeline import clustering                                      # noqa: E402
-from app.pipeline.analyze import (                                     # noqa: E402
-    persist_analysis, prepare_analysis, recompute_attention,
+from app.db.session import get_connection, init_db
+from app.pipeline import clustering
+from app.pipeline.analyze import (
+    persist_analysis,
+    prepare_analysis,
+    recompute_attention,
 )
 
 

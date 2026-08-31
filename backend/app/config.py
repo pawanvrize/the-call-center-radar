@@ -3,6 +3,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 #: Where `./data/...` points.
 #:
 #: This file lives at .../app/config.py in every case, but "the directory two

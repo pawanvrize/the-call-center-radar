@@ -17,7 +17,14 @@ import sqlite3
 from dataclasses import dataclass, field
 
 from app.config import settings
-from app.pipeline import attention_score, changepoint, mood, reality_check, reasoning, verifier
+from app.pipeline import (
+    attention_score,
+    changepoint,
+    mood,
+    reality_check,
+    reasoning,
+    verifier,
+)
 from app.pipeline.turns import Turn
 
 

@@ -47,8 +47,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.db.session import get_connection  # noqa: E402
-from app.pipeline.analyze import persist_analysis, prepare_analysis  # noqa: E402
+from app.db.session import get_connection
+from app.pipeline.analyze import persist_analysis, prepare_analysis
 
 #: Tolerant of the ASR variants actually observed: Harper/Harbor/Hapa/Harford/
 #: Upper Valley, and stutter-repeats ("Hello, this is Harper— hello, this is

@@ -22,8 +22,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.pipeline import attention_score, changepoint, mood  # noqa: E402
-from app.pipeline.analyze import (  # noqa: E402
+from app.pipeline import attention_score, changepoint, mood
+from app.pipeline.analyze import (
     _build_evidence,
     is_citable_shift,
     load_turns,

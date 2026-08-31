@@ -1,7 +1,7 @@
 from app.config import settings
 
-from .base import CHANNEL_SPEAKERS, Segment, Speaker, Transcriber, Word
 from .assemblyai_provider import AssemblyAIProvider
+from .base import CHANNEL_SPEAKERS, Segment, Speaker, Transcriber, Word
 from .whisper_provider import WhisperProvider
 
 
@@ -30,11 +30,11 @@ def get_transcriber(provider: str | None = None) -> Transcriber:
 
 __all__ = [
     "CHANNEL_SPEAKERS",
+    "AssemblyAIProvider",
     "Segment",
     "Speaker",
     "Transcriber",
-    "Word",
-    "AssemblyAIProvider",
     "WhisperProvider",
+    "Word",
     "get_transcriber",
 ]

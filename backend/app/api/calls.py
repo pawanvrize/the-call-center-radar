@@ -88,7 +88,7 @@ def get_call(call_id: str, conn: DbConn):
     ]
 
     ev = _evidence_by_type(conn, call_id)
-    first = lambda kind: (ev.get(kind) or [None])[0]  # noqa: E731
+    first = lambda kind: (ev.get(kind) or [None])[0]
 
     resolution_contradiction = None
     agent_ev, customer_ev = first("resolution_contradiction_agent"), first(

@@ -24,6 +24,27 @@ cost):
 See [RADAR_PLAYBOOK.md](RADAR_PLAYBOOK.md) for the reasoning behind each
 choice.
 
+### What the brief asked for, and where it's answered
+
+| The brief asks for | Answered here |
+|---|---|
+| Speech → text, speaker-timed, turn by turn | [Architecture](#architecture) — stages `split channels` → `transcribe` → `merge into turns` |
+| Per customer: name, full call history, recording + transcript | `GET /customers/{id}/calls`, the Customers tab |
+| Per call: intent, mood + the point it shifted, resolution, ≤40-word summary | `GET /calls/{id}` — every field paired with the [Call detail](#screenshots) screenshot |
+| Across calls: ranked attention queue, trending issues, per-agent volume/handle time/outcomes | Overview + Attention / Trends / Agents tabs — see [Screenshots](#screenshots) |
+| Every judgment cites a timestamp + the words spoken | The no-quotes-from-the-model rule, above — enforced, not just followed |
+| Unsupported evidence scores negative, not neutral | [Evaluation](#evaluation) — the verifier's re-checked pass rate, with rejection reasons |
+| Don't re-transcribe on every request | Precomputed, stored in SQLite, read-only API — see [Quickstart](#quickstart) |
+| A README that runs it from scratch, transcription included | [Rebuilding from scratch](#rebuilding-from-scratch) |
+
+### Contents
+
+[Architecture](#architecture) · [Screenshots](#screenshots) · [Requirements](#requirements) · [Quickstart](#quickstart) ·
+[Rebuilding from scratch](#rebuilding-from-scratch) · [Reasoning providers](#reasoning-providers) ·
+[Live ingestion](#live-ingestion) · [Useful flags](#useful-flags) · [Evaluation](#evaluation) ·
+[Project layout](#project-layout) · [Tests](#tests) ·
+[Known characteristics of this dataset](#known-characteristics-of-this-dataset)
+
 ---
 
 ## Architecture
@@ -85,18 +106,14 @@ measured on this corpus — not just the *what* shown here.
 <tr>
 <td width="50%">
 
-**Overview** — the admin home page. A stated verdict before any number, stat
-cards colored by the same thresholds as everywhere else, previews of
-attention/trends/agents that each open to their full page.
+**Overview**
 
 <img src="docs/screenshots/overview.png" alt="Overview dashboard" width="100%">
 
 </td>
 <td width="50%">
 
-**Call detail** — the signature interaction. Every judgment (intent,
-resolution, mood shift) sits next to the exact quote and timestamp it came
-from; clicking one seeks the waveform to that second.
+**Call detail**
 
 <img src="docs/screenshots/call-detail.png" alt="Call detail with evidence chips" width="100%">
 
@@ -105,19 +122,14 @@ from; clicking one seeks the waveform to that second.
 <tr>
 <td width="50%">
 
-**Trends** — issue clusters discovered from the call summaries themselves,
-each measured against the corpus-wide baseline (resolved %, avg attention,
-avg handle time) rather than shown as a bare count, with each day's *share*
-of that issue's calls alongside.
+**Trends**
 
 <img src="docs/screenshots/trends.png" alt="Trending issues" width="100%">
 
 </td>
 <td width="50%">
 
-**Agents** — volume, handle time, and outcomes, plus each agent's weakest
-issue relative to their *own* baseline — the coaching signal, not a raw
-ranking.
+**Agents**
 
 <img src="docs/screenshots/agents.png" alt="Agent performance" width="100%">
 
@@ -125,12 +137,30 @@ ranking.
 </tr>
 </table>
 
-**Live ingestion** — the same pipeline that ran the batch, on a recording
-nobody has seen:
+**Analyse a call**
 
 <img src="docs/screenshots/ingest.png" alt="Analyse a new call" width="70%">
 
 ---
+
+## Requirements
+
+Everything runs in containers — **no local Python, Node, or package install
+needed** to serve the dashboard.
+
+- **Docker Desktop** (or Docker Engine + Compose v2 — this repo uses
+  `docker compose`, not the standalone `docker-compose`)
+- **Git**, to clone this repo
+- **`callradar-data.zip`** — the 1,441 call recordings, supplied with the
+  brief itself. This repo doesn't fetch it for you; unzip it into `data/`
+  (see Quickstart below).
+- **~1 GB free disk** — ~500 MB of audio once unzipped, plus Docker images
+  and cached model weights in named volumes.
+- Only if [rebuilding from scratch](#rebuilding-from-scratch): free API keys
+  for AssemblyAI and Groq (both covered there, no card required for either).
+
+Nothing else — no GPU, no manual dependency install, no database server to
+stand up.
 
 ## Quickstart
 

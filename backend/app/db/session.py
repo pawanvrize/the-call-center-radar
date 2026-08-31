@@ -3,8 +3,9 @@ brief's "how you store the analysis is your design decision" latitude."""
 import sqlite3
 import sys
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Annotated, Iterator
+from typing import Annotated
 
 from fastapi import Depends
 

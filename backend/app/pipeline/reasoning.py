@@ -16,7 +16,6 @@ schema adherence is the entire mechanism above. Do not swap the model without
 checking that list.
 """
 import json
-import re
 import threading
 from dataclasses import dataclass
 

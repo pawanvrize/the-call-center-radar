@@ -46,8 +46,7 @@ STOPWORDS = {
     "this", "not", "no", "you", "your", "we", "i", "he", "she", "at", "by",
     "intent", "outcome", "entered", "request", "requested", "confirmed",
     "customer's", "status", "completed", "provided", "gathered", "gave",
-    "call", "agent", "ended", "promised", "gave",
-    "from", "as", "s", "t", "provided", "requested", "resolved", "unresolved",
+    "ended", "promised", "from", "as", "s", "t", "resolved", "unresolved",
 }
 
 
