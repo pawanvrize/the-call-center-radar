@@ -27,21 +27,23 @@ def load(cache_dir: Path, call_id: str, provider: str) -> list[Segment] | None:
         return None
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        # A truncated write (killed mid-batch) should not poison every re-run.
+        segments = [
+            Segment(
+                speaker=s["speaker"],
+                start=s["start"],
+                end=s["end"],
+                text=s["text"],
+                words=[Word(**w) for w in s.get("words", [])],
+            )
+            for s in raw["segments"]
+        ]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        # A truncated write (killed mid-batch) or a stale/mismatched cache
+        # format should not poison every re-run — just re-transcribe.
         path.unlink(missing_ok=True)
         return None
 
-    return [
-        Segment(
-            speaker=s["speaker"],
-            start=s["start"],
-            end=s["end"],
-            text=s["text"],
-            words=[Word(**w) for w in s.get("words", [])],
-        )
-        for s in raw["segments"]
-    ]
+    return segments
 
 
 def store(cache_dir: Path, call_id: str, provider: str, segments: list[Segment]) -> None:

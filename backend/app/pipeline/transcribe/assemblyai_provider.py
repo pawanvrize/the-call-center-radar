@@ -34,6 +34,7 @@ crash, or a Ctrl-C now costs nothing — the next run finds the saved ID and
 collects the finished transcript instead of paying for it twice.
 """
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -185,7 +186,16 @@ class AssemblyAIProvider(Transcriber):
             try:
                 return CHANNEL_SPEAKERS[int(channel)]
             except (ValueError, TypeError, KeyError):
-                pass
+                # channel present but not 1/2 — an SDK/API change, not the
+                # documented multichannel contract. Silently falling through
+                # to the speaker-label heuristic below would mislabel every
+                # turn in the call with no signal anywhere that it happened,
+                # exactly the failure mode the 35-call channel-swap bug was.
+                logging.getLogger(__name__).warning(
+                    "AssemblyAI utterance had an unexpected channel value %r "
+                    "(text: %r) — falling back to the speaker-label heuristic",
+                    channel, str(getattr(utterance, "text", ""))[:80],
+                )
 
         speaker = str(getattr(utterance, "speaker", "") or "").strip().upper()
         return "agent" if speaker in ("A", "1") else "customer"

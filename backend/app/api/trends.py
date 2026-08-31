@@ -123,7 +123,9 @@ def cluster_calls(cluster_id: int, conn: DbConn, limit: int = 200):
     rows = conn.execute(
         """
         SELECT c.id, c.started_at, c.duration_seconds, c.intent_label,
-               c.resolution_status, c.summary, c.attention_score
+               c.resolution_status, c.summary, c.attention_score,
+               ROUND((SELECT AVG(verified) FROM evidence WHERE evidence.call_id = c.id) * 100, 1)
+                   AS evidence_coverage
         FROM call_clusters cc
         JOIN calls c ON c.id = cc.call_id
         WHERE cc.cluster_id = ?

@@ -28,7 +28,13 @@ def repeat_contacts(conn: DbConn, min_calls: int = MIN_CALLS, limit: int = 50):
         SELECT c.customer_id, cu.name AS customer_name,
                cc.cluster_id, ic.label AS issue_label,
                COUNT(*) AS n,
-               SUM(CASE WHEN c.resolution_status = 'unresolved' THEN 1 ELSE 0 END) AS unresolved,
+               -- 'partial' counts too: a customer whose card-decline issue was
+               -- called "partially resolved" four times running is exactly the
+               -- unresolved-problem signal this view exists to surface. Only
+               -- strict 'unresolved' was counted originally, which silently
+               -- dropped every partial-resolution repeat pattern from both this
+               -- count and the ORDER BY below.
+               SUM(CASE WHEN c.resolution_status IN ('unresolved', 'partial') THEN 1 ELSE 0 END) AS unresolved,
                MIN(c.started_at) AS first_call,
                MAX(c.started_at) AS last_call,
                julianday(MAX(c.started_at)) - julianday(MIN(c.started_at)) AS span
@@ -51,7 +57,9 @@ def repeat_contacts(conn: DbConn, min_calls: int = MIN_CALLS, limit: int = 50):
         calls = conn.execute(
             """
             SELECT c.id, c.started_at, c.duration_seconds, c.intent_label,
-                   c.resolution_status, c.summary, c.attention_score
+                   c.resolution_status, c.summary, c.attention_score,
+                   ROUND((SELECT AVG(verified) FROM evidence WHERE evidence.call_id = c.id) * 100, 1)
+                       AS evidence_coverage
             FROM call_clusters cc
             JOIN calls c ON c.id = cc.call_id
             WHERE c.customer_id = ? AND cc.cluster_id = ?

@@ -37,11 +37,13 @@ def customer_calls(customer_id: str, conn: DbConn):
 
     rows = conn.execute(
         """
-        SELECT id, started_at, duration_seconds, intent_label,
-               resolution_status, summary, attention_score
-        FROM calls
-        WHERE customer_id = ?
-        ORDER BY started_at DESC
+        SELECT c.id, c.started_at, c.duration_seconds, c.intent_label,
+               c.resolution_status, c.summary, c.attention_score,
+               ROUND((SELECT AVG(verified) FROM evidence WHERE evidence.call_id = c.id) * 100, 1)
+                   AS evidence_coverage
+        FROM calls c
+        WHERE c.customer_id = ?
+        ORDER BY c.started_at DESC
         """,
         (customer_id,),
     ).fetchall()

@@ -91,6 +91,12 @@ class CallSummary(BaseModel):
     summary: str | None
     attention_score: int | None
 
+    #: % of this call's evidence rows that passed verification — same figure
+    #: as CallDetail.evidence_coverage, so a list row can flag "some claims
+    #: here are unverified" before a manager ever opens the call. None when
+    #: not yet analysed (no evidence rows exist).
+    evidence_coverage: float | None = None
+
 
 class Customer(BaseModel):
     id: str

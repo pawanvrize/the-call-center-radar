@@ -66,7 +66,10 @@ async def ingest_call(
                         status_code=400,
                         detail=f"upload exceeds {MAX_UPLOAD_BYTES // 1024 // 1024}MB",
                     )
-                out.write(chunk)
+                # Blocking disk I/O, off the event loop — see module docstring;
+                # this call was the one place that contradicted it, stalling
+                # every other in-flight request for as long as the write took.
+                await run_in_threadpool(out.write, chunk)
     except HTTPException:
         audio_path.unlink(missing_ok=True)
         raise
@@ -75,7 +78,9 @@ async def ingest_call(
         audio_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail="uploaded file is empty")
 
-    duration, channels = _probe(audio_path)
+    # subprocess.run() blocks synchronously; off the event loop for the same
+    # reason as the write above.
+    duration, channels = await run_in_threadpool(_probe, audio_path)
     if channels < 2:
         audio_path.unlink(missing_ok=True)
         raise HTTPException(

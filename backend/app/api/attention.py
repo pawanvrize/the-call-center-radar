@@ -67,7 +67,9 @@ def needs_attention(conn: DbConn, date: str | None = None, limit: int = 100):
     rows = conn.execute(
         """
         SELECT id, started_at, duration_seconds, intent_label,
-               resolution_status, summary, attention_score
+               resolution_status, summary, attention_score,
+               ROUND((SELECT AVG(verified) FROM evidence WHERE evidence.call_id = calls.id) * 100, 1)
+                   AS evidence_coverage
         FROM calls
         WHERE DATE(started_at) = ?
         -- SQLite sorts NULL below any value, so DESC puts unscored calls last:

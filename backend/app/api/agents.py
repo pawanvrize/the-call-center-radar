@@ -61,6 +61,12 @@ def list_agents(conn: DbConn):
     rows = conn.execute(
         f"""
         SELECT a.id, a.name,
+               -- Deliberately every call, analysed or not: "call volume" means
+               -- calls handled, not calls this pipeline has gotten to yet.
+               -- resolution_rate/avg_attention_score are unaffected — AVG()
+               -- and the CASE in _RESOLVED already skip NULL (unanalysed)
+               -- rows on their own, so the two stats use different implicit
+               -- denominators by design, not by accident.
                COUNT(c.id) AS call_count,
                COALESCE(AVG(c.duration_seconds), 0) AS avg_handle_time_seconds,
                COALESCE({_RESOLVED}, 0) AS resolution_rate,
@@ -123,7 +129,9 @@ def agent_calls(agent_id: str, conn: DbConn, cluster_id: int | None = None, limi
 
     sql = """
         SELECT c.id, c.started_at, c.duration_seconds, c.intent_label,
-               c.resolution_status, c.summary, c.attention_score
+               c.resolution_status, c.summary, c.attention_score,
+               ROUND((SELECT AVG(verified) FROM evidence WHERE evidence.call_id = c.id) * 100, 1)
+                   AS evidence_coverage
         FROM calls c
     """
     params: list = [agent_id]

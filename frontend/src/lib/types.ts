@@ -83,6 +83,9 @@ export interface CallSummary {
   resolution_status: string | null;
   summary: string | null;
   attention_score: number | null;
+  /** % of this call's evidence rows that passed verification. Null when not
+   *  yet analysed. Same figure as CallDetail.evidence_coverage. */
+  evidence_coverage: number | null;
 }
 
 export interface Customer {

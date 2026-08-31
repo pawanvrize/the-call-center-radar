@@ -20,6 +20,7 @@ Two settings matter more than they look on channel-split telephony:
 Segments are additionally filtered on no_speech_prob, because VAD alone does
 not catch everything.
 """
+import logging
 from pathlib import Path
 
 from .base import Segment, Speaker, Transcriber, Word
@@ -50,10 +51,29 @@ class WhisperProvider(Transcriber):
         from app.pipeline.audio import split_channels
 
         channels = split_channels(stereo_path, work_dir)
-        return [
-            *self._transcribe_channel(channels.agent_wav, "agent"),
-            *self._transcribe_channel(channels.customer_wav, "customer"),
-        ]
+        agent_segments = self._transcribe_channel(channels.agent_wav, "agent")
+        customer_segments = self._transcribe_channel(channels.customer_wav, "customer")
+
+        # Matches assemblyai_provider's equivalent guard — a call with zero
+        # turns on both sides is a transcription failure, not an empty call.
+        if not agent_segments and not customer_segments:
+            raise RuntimeError(
+                f"Whisper produced no speech on either channel for {stereo_path.name}. "
+                "Check the recording isn't silent/corrupted."
+            )
+        # One-sided emptiness is plausible (a customer who says nothing before
+        # hanging up) but unusual enough to be worth a log line rather than
+        # silently flowing downstream as a call with no evidence to cite on
+        # that side — visibility over the same class of problem the AssemblyAI
+        # channel-mapping fallback above logs.
+        if not agent_segments or not customer_segments:
+            empty_side = "agent" if not agent_segments else "customer"
+            logging.getLogger(__name__).warning(
+                "Whisper produced zero segments on the %s channel for %s",
+                empty_side, stereo_path.name,
+            )
+
+        return [*agent_segments, *customer_segments]
 
     def _transcribe_channel(self, wav_path: Path, speaker: Speaker) -> list[Segment]:
         model = self._load()
