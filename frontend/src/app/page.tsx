@@ -95,9 +95,14 @@ function SectionHead({
   );
 }
 
-export default async function Overview() {
+export default async function Overview({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const { date } = await searchParams;
   const [attention, trends, agents, repeats] = await Promise.all([
-    getAttention(undefined, 500),
+    getAttention(date, 500),
     getTrends(),
     getAgents(),
     getRepeatContacts(),
@@ -142,6 +147,10 @@ export default async function Overview() {
     ? [...agents.data].sort((a, b) => b.call_count - a.call_count).slice(0, 5)
     : [];
 
+  // So "View all"/"Review" links land on the same day already picked here,
+  // instead of resetting to the latest one.
+  const attentionHref = attention.data?.date ? `/attention?date=${attention.data.date}` : "/attention";
+
   return (
     <div className="space-y-8">
       <div>
@@ -153,6 +162,36 @@ export default async function Overview() {
       </div>
 
       {errors.length > 0 && <ApiNotice error={errors[0]} />}
+
+      {/* The corpus covers four non-contiguous days, so "today" defaults to
+          the most recent one with calls rather than the literal date — same
+          convention as /attention. The banner and the two day-scoped stat
+          cards below all follow whichever day is picked here; Trending
+          issues and Agent snapshot stay corpus-wide, since those endpoints
+          have no notion of a day at all. */}
+      {attention.data && attention.data.available_dates.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-slate-500">Day</span>
+          {attention.data.available_dates.map((day) => {
+            const active = day.date === attention.data!.date;
+            return (
+              <Link
+                key={day.date}
+                href={`/?date=${day.date}`}
+                className={cn(
+                  "rounded-md border px-3 py-1 font-mono text-xs tabular-nums transition",
+                  active
+                    ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                    : "border-slate-200 text-slate-500 hover:border-blue-400 dark:border-slate-800",
+                )}
+              >
+                {day.date}
+                <span className="ml-2 text-slate-400">{day.call_count}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {/* The one verdict this page exists to deliver, stated before any
           number is read — color and words agree, never color alone. */}
@@ -169,7 +208,7 @@ export default async function Overview() {
               </span>
             </p>
             <Link
-              href="/attention"
+              href={attentionHref}
               className="ml-auto shrink-0 flex items-center gap-1 text-sm font-medium text-red-700 hover:underline dark:text-red-400"
             >
               Review now <ArrowRight size={14} />
@@ -187,7 +226,7 @@ export default async function Overview() {
               </span>
             </p>
             <Link
-              href="/attention"
+              href={attentionHref}
               className="ml-auto shrink-0 flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline dark:text-amber-400"
             >
               Review <ArrowRight size={14} />
@@ -239,7 +278,7 @@ export default async function Overview() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-3">
-          <SectionHead title="Needs a manager's attention" href="/attention" />
+          <SectionHead title="Needs a manager's attention" href={attentionHref} />
           {attention.data && attention.data.calls.length === 0 && (
             <p className="text-sm text-slate-500">No calls for this day.</p>
           )}
